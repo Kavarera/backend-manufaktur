@@ -20,7 +20,7 @@ testing-api/
 ```
 
 ### Endpoints
-1. `/regitser` Super Admin only
+1. `/register` Super Admin only
 
 ### Responses 
 
