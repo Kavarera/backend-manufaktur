@@ -43,11 +43,6 @@ Payload Body JSON:
 Response: 200 SUCCESS
 ```
 {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InN1cGVyX2FkbWluX3VzZXIiLCJyb2xlIjoic3VwZXJfYWRtaW5cbiIsImV4cCI6MTczMzk5MTMzN30.xtsawJm2U2Q8RxutPPiECyhewPWCNQk0PgPT9c7Y8BE",
-    "user": {
-        "fullname": "superAdmin1",
-        "role": "super_admin\n",
-        "username": "super_admin_user"
-    }
+    "message": "User registered successfully"
 }
 ```
