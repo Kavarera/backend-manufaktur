@@ -19,23 +19,35 @@ testing-api/
     │   jwt.go
 ```
 
-## Endpoints
+### Endpoints
+1. `/regitser` Super Admin only
 
-The API provides main endpoints:
+### Responses 
 
-1. **POST `/login`** - LOGIN
+#### 1. Login Super Admin Method
+**HTTP Request:**
+```
+POST /register
+```
 
-Endpoint:
-POST /login
-
-Description:
-Authenticates a user with username and password. Returns a JWT token if credentials are valid.
-
-Request Body (JSON):
+Payload Body JSON: 
+```
 {
-  "username": "string",
-  "password": "string"
+  "id": "admin1",
+  "username": "Test2",
+  "password": "12345678910",
+  "hak_akses": 7
 }
-Success Response:
+```
 
-Status: 200 OK
+Response: 200 SUCCESS
+```
+{
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InN1cGVyX2FkbWluX3VzZXIiLCJyb2xlIjoic3VwZXJfYWRtaW5cbiIsImV4cCI6MTczMzk5MTMzN30.xtsawJm2U2Q8RxutPPiECyhewPWCNQk0PgPT9c7Y8BE",
+    "user": {
+        "fullname": "superAdmin1",
+        "role": "super_admin\n",
+        "username": "super_admin_user"
+    }
+}
+```
