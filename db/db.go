@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 
 	_ "github.com/lib/pq"
 )
@@ -11,16 +12,20 @@ import (
 var DB *sql.DB
 
 func InitDB() {
+	connStr := os.Getenv("DB_CONN")
+	if connStr == "" {
+		log.Fatal("Environment variable DB_CONN not set")
+	}
+
 	var err error
-	connStr := "[ISI]"
 	DB, err = sql.Open("postgres", connStr)
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+		log.Fatalf("Failed to open database connection: %v", err)
 	}
 
 	err = DB.Ping()
 	if err != nil {
-		log.Fatal("Database connection failed:", err)
+		log.Fatalf("Failed to ping database: %v", err)
 	}
 
 	fmt.Println("Database connection successful")

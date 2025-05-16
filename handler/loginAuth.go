@@ -1,11 +1,12 @@
 package handler
 
 import (
-	"API/db"
-	"API/utils"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"manufacture_API/db"
+	"manufacture_API/model"
+	"manufacture_API/utils"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -22,15 +23,15 @@ func Login(c *gin.Context) {
 	}
 
 	// Database table selection
-	var user mode.User
+	var user model.User
 	query := `
-        SELECT u."id", u."username", u."password", u."hak_akses",h."hak_akses"
-        FROM "userAccount" u
-        JOIN "hakAkses" h ON u."hak_akses" = h."id"
-        WHERE u."username" = $1;
+        SELECT u."id", r."id", u."username", u."password", r."hak_akses"
+		FROM "userAccount" u
+		JOIN "hakAkses" r ON u."hak_akses"::bigint = r."id"
+		WHERE u."username" = $1;
     `
 	err := db.DB.QueryRow(query, credentials.Username).Scan(
-		&user.userID, &user.Username, &user.Password, &user.hakAkses,
+		&user.UserID, &user.IdHakAkses, &user.Username, &user.Password, &user.HakAkses,
 	)
 	if err == sql.ErrNoRows || err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
@@ -40,12 +41,12 @@ func Login(c *gin.Context) {
 	// Verify password
 	hashedInputPassword := hashPassword(credentials.Password)
 	if hashedInputPassword != user.Password {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Password Salah"})
 		return
 	}
 
 	// Generate JWT
-	token, err := utils.GenerateJWT(user.Username, user.RoleName)
+	token, err := utils.GenerateJWT(user.Username, user.HakAkses)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
 		return
@@ -55,8 +56,7 @@ func Login(c *gin.Context) {
 		"token": token,
 		"user": gin.H{
 			"username": user.Username,
-			"rolename": user.RoleName,
-			"fullname": user.Fullname,
+			"roleName": user.HakAkses,
 		},
 	})
 }
