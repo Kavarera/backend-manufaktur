@@ -467,5 +467,126 @@ Response: 200 SUCCESS
 }
 ```
 
+19. Tambah Rencana Produksi
+
+**HTTP Request:**
+```
+POST  /rencanaProduksi
+```
+Payload Body JSON: 
+```
+{
+  "id": "RP001",
+  "barangProduksiId": 5,
+  "tanggalMulai": "2025-06-01",
+  "waktuMulai": "08:00:00Z",
+  "tanggalSelesai": "2025-06-15",
+  "waktuSelesai": "17:00:00Z"
+}
+
+```
+
+Response: 200 SUCCESS
+```
+{
+    "barangProduksiId": 5,
+    "id": "RP00111",
+    "tanggalMulai": "2025-06-01T08:00:00Z",
+    "tanggalSelesai": "2025-06-15T17:00:00Z"
+}
+```
+
+20. List Rencana Produksi
+
+**HTTP Request:**
+```
+GET /rencanaProduksi
+```
+
+Response: 200 SUCCESS
+```
+[
+    {
+        "id": "RP001",
+        "barangProduksiId": 5,
+        "tanggalMulai": "2025-06-01T08:00:00Z",
+        "tanggalSelesai": "2025-06-15T17:00:00Z"
+    },
+    {
+        "id": "RP0010",
+        "barangProduksiId": 5,
+        "tanggalMulai": "2025-06-01T08:00:00Z",
+        "tanggalSelesai": "2025-06-15T17:00:00Z"
+    },
+    {
+        "id": "RP00111",
+        "barangProduksiId": 5,
+        "tanggalMulai": "2025-06-01T08:00:00Z",
+        "tanggalSelesai": "2025-06-15T17:00:00Z"
+    }
+]
+```
+
+21. List Rencana Produksi by ID
+
+**HTTP Request:**
+```
+GET /gudang/RP00111
+```
+
+Response: 200 SUCCESS
+```
+{
+    "id": "RP00111",
+    "barangProduksiId": 5,
+    "tanggalMulai": "2025-06-01T08:00:00Z",
+    "tanggalSelesai": "2025-06-15T17:00:00Z"
+}
+```
+
+22. Update Rencana Produksi
+
+**HTTP Request:**
+```
+PUT /rencanaProduksi/RP00111
+```
+
+Payload Body JSON: (Dinamis)
+```
+{
+  "tanggalMulai": "2025-06-10T09:00:00Z"
+}
+
+atau
+
+{
+  "tanggalSelesai": "2025-06-10T09:00:00Z"
+}
+
+```
+
+Response: 200 SUCCESS
+```
+{
+    "message": "Rencana produksi updated successfully"
+}
+```
+
+23. Hapus Rencana Produksi
+
+**HTTP Request:**
+```
+DELETE /barangProduksi/RP00111
+```
+
+
+Response: 200 SUCCESS
+```
+{
+    "message": "Rencana produksi deleted successfully"
+}
+```
+
+
 
 
