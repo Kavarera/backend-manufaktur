@@ -25,10 +25,10 @@ func Login(c *gin.Context) {
 	// Database table selection
 	var user model.User
 	query := `
-        SELECT u."id", r."id", u."username", u."password", r."hak_akses"
+		SELECT u."id", u."username", u."password", h."hak_akses", u."hak_akses"
 		FROM "userAccount" u
-		JOIN "hakAkses" r ON u."hak_akses"::bigint = r."id"
-		WHERE u."username" = $1;
+		JOIN "hakAkses" h ON u."hak_akses" = h."id"::bigint
+   		WHERE u."id" =  $1;
     `
 	err := db.DB.QueryRow(query, credentials.Username).Scan(
 		&user.UserID, &user.IdHakAkses, &user.Username, &user.Password, &user.HakAkses,

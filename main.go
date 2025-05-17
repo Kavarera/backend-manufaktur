@@ -20,6 +20,13 @@ func main() {
 	// Public routes
 	r.POST("/login", handler.Login)
 	r.POST("/register", handler.Register)
+	r.GET("/users/:id", handler.UserList)
+	r.DELETE("/users/:id", handler.UserDelete)
+
+	r.POST("/barangMentah", handler.AddMentah)
+	r.GET("/barangMentah", handler.ListMentah)
+	r.PUT("/barangMentah/:id", handler.UpdateMentah)
+	r.DELETE("/barangMentah/:id", handler.DeleteMentah)
 
 	// // Protected routes group with RoleBasedAuth middleware
 	// authGroup := r.Group("/auth")
