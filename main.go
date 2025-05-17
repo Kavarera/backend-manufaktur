@@ -40,6 +40,12 @@ func main() {
 	r.PUT("/gudang/:id", handler.UpdateGudang)
 	r.DELETE("/gudang/:id", handler.DeleteGudang)
 
+	r.GET("/rencanaProduksi", handler.ListRencanaProduksi)
+	r.GET("/rencanaProduksi/:id", handler.GetRencanaProduksiByID)
+	r.POST("/rencanaProduksi", handler.AddRencanaProduksi)
+	r.PUT("/rencanaProduksi/:id", handler.UpdateRencanaProduksi)
+	r.DELETE("/rencanaProduksi/:id", handler.DeleteRencanaProduksi)
+
 	// // Protected routes group with RoleBasedAuth middleware
 	// authGroup := r.Group("/auth")
 	// authGroup.Use(middlewares.RoleBasedAuth([]string{"Super Admin"}))
