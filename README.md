@@ -57,6 +57,7 @@ Response: 200 SUCCESS
 ```
 
 2. Login Super Admin Method
+   
 **HTTP Request:**
 ```
 POST /login
@@ -82,6 +83,7 @@ Response: 200 SUCCESS
 ```
 
 3. Login Super Admin Method
+   
 **HTTP Request:**
 ```
 GET /users/1
@@ -100,6 +102,7 @@ Response: 200 SUCCESS
 ```
 
 4. Login Super Admin Method
+   
 **HTTP Request:**
 ```
 DELETE /users/1
@@ -114,6 +117,7 @@ Response: 200 SUCCESS
 ```
 
 5. Tambah Barang Mentah
+   
 **HTTP Request:**
 ```
 POST  /barangMentah
@@ -149,6 +153,7 @@ Response: 200 SUCCESS
 ```
 
 6. List Barang Mentah
+   
 **HTTP Request:**
 ```
 GET /barangMentah
@@ -185,6 +190,7 @@ Response: 200 SUCCESS
 ```
 
 7. Update Barang Mentah
+   
 **HTTP Request:**
 ```
 PUT /barangMentah/1
@@ -213,6 +219,7 @@ Response: 200 SUCCESS
 ```
 
 8. Hapus Barang Mentah
+   
 **HTTP Request:**
 ```
 DELETE /barangMentah/1
