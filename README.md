@@ -33,6 +33,7 @@ Endpoints
 ### Responses 
 
 1. Register New User
+   
 **HTTP Request:**
 ```
 POST /register
