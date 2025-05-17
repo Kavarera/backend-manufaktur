@@ -38,6 +38,11 @@ testing-api/
 16. GET `/gudang/:id`
 17. PUT `/gudang/:id`
 18. DELETE `/gudang/:id`
+19. POST `/rencanaProduksi`
+20. GET `/rencanaProduksi`
+21. GET `/rencanaProduksi/:id`
+22. PUT `/rencanaProduksi/:id`
+23. DELETE `/rencanaProduksi/:id`
 
 ### Responses 
 
