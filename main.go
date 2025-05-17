@@ -28,6 +28,18 @@ func main() {
 	r.PUT("/barangMentah/:id", handler.UpdateMentah)
 	r.DELETE("/barangMentah/:id", handler.DeleteMentah)
 
+	r.GET("/barangProduksi", handler.ListBarangProduksi)
+	r.GET("/barangProduksi/:id", handler.GetBarangProduksiByID)
+	r.POST("/barangProduksi", handler.AddBarangProduksi)
+	r.PUT("/barangProduksi/:id", handler.UpdateBarangProduksi)
+	r.DELETE("/barangProduksi/:id", handler.DeleteBarangProduksi)
+
+	r.GET("/gudang", handler.ListGudang)
+	r.GET("/gudang/:id", handler.GetGudangByID)
+	r.POST("/gudang", handler.AddGudang)
+	r.PUT("/gudang/:id", handler.UpdateGudang)
+	r.DELETE("/gudang/:id", handler.DeleteGudang)
+
 	// // Protected routes group with RoleBasedAuth middleware
 	// authGroup := r.Group("/auth")
 	// authGroup.Use(middlewares.RoleBasedAuth([]string{"Super Admin"}))
