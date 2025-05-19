@@ -88,9 +88,11 @@ Payload Body JSON:
 Response: 200 SUCCESS
 ```
 {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IlRlc3Q0Iiwicm9sZSI6IlN1cGVyQWRtaW4iLCJleHAiOjE3NDc0MTQ5MjZ9.BeyfcFbcTK1zd1kPRceJvdK5C7AiiCPKun6F1ZnIMxk",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IlRlc3Q0Iiwicm9sZSI6IlN1cGVyQWRtaW4iLCJleHAiOjE3NDc2NjYzNDB9.E0QUZ3kGAftJQXjBsONPVz855mWMP_FRHaOCS-XQ2i0",
     "user": {
-        "roleName": "SuperAdmin",
+        "role": "SuperAdmin",
+        "roleId": 7,
+        "userId": "adminTest4",
         "username": "Test4"
     }
 }
