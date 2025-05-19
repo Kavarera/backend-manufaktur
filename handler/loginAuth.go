@@ -17,30 +17,34 @@ func Login(c *gin.Context) {
 		Username string `json:"username"`
 		Password string `json:"password"`
 	}
+
 	if err := c.ShouldBindJSON(&credentials); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
-	// Database table selection
 	var user model.User
 	query := `
 		SELECT u."id", u."username", u."password", h."hak_akses", u."hak_akses"
 		FROM "userAccount" u
-		JOIN "hakAkses" h ON u."hak_akses" = h."id"::bigint
-   		WHERE u."id" =  $1;
-    `
-	err := db.DB.QueryRow(query, credentials.Username).Scan(
-		&user.UserID, &user.IdHakAkses, &user.Username, &user.Password, &user.HakAkses,
+		JOIN "hakAkses" h ON u."hak_akses" = h."id"
+		WHERE u."username" = $1
+	`
+
+	err := db.GetDB().QueryRow(query, credentials.Username).Scan(
+		&user.UserID, &user.Username, &user.Password, &user.HakAkses, &user.IdHakAkses,
 	)
-	if err == sql.ErrNoRows || err != nil {
+	if err == sql.ErrNoRows {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
 		return
 	}
 
-	// Verify password
-	hashedInputPassword := hashPassword(credentials.Password)
-	if hashedInputPassword != user.Password {
+	// Match hashed password
+	hashedInput := hashPassword(credentials.Password)
+	if user.Password != hashedInput {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Password Salah"})
 		return
 	}
@@ -55,8 +59,10 @@ func Login(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"token": token,
 		"user": gin.H{
+			"userId":   user.UserID,
 			"username": user.Username,
-			"roleName": user.HakAkses,
+			"role":     user.HakAkses,
+			"roleId":   user.IdHakAkses,
 		},
 	})
 }
