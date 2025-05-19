@@ -59,7 +59,7 @@ Payload Body JSON:
   "id": "admin1",
   "username": "Test2",
   "password": "12345678910",
-  "hak_akses": 7
+  "hak_akses": "7"
 }
 ```
 
