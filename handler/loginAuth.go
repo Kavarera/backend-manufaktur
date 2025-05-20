@@ -19,7 +19,10 @@ func Login(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&credentials); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "Error",
+			"message": "Invalid request",
+		})
 		return
 	}
 
@@ -35,34 +38,48 @@ func Login(c *gin.Context) {
 		&user.UserID, &user.Username, &user.Password, &user.HakAkses, &user.IdHakAkses,
 	)
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status":  "Error",
+			"message": "Invalid credentials",
+		})
 		return
 	} else if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "Error",
+			"message": "Database error",
+		})
 		return
 	}
 
-	// Match hashed password
 	hashedInput := hashPassword(credentials.Password)
 	if user.Password != hashedInput {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Password Salah"})
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"status":  "Error",
+			"message": "Password Salah",
+		})
 		return
 	}
 
-	// Generate JWT
 	token, err := utils.GenerateJWT(user.Username, user.HakAkses)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "Error",
+			"message": "Could not generate token",
+		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"token": token,
-		"user": gin.H{
-			"userId":   user.UserID,
-			"username": user.Username,
-			"role":     user.HakAkses,
-			"roleId":   user.IdHakAkses,
+		"status":  "OK",
+		"message": "Berhasil",
+		"data": gin.H{
+			"token": token,
+			"user": gin.H{
+				"userId":   user.UserID,
+				"username": user.Username,
+				"role":     user.HakAkses,
+				"roleId":   user.IdHakAkses,
+			},
 		},
 	})
 }

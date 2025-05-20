@@ -13,7 +13,7 @@ func UserList(c *gin.Context) {
 	id := c.Param("id")
 
 	query := `
-		SELECT ua."id", ua."username", ua."password", ha."hak_akses", ua."hak_akses"
+		SELECT ua."id", ua."username", ha."hak_akses", ua."hak_akses"
 		FROM "userAccount" ua
 		JOIN "hakAkses" ha ON ua."hak_akses" = ha."id"
 		WHERE ua."id" = $1
@@ -21,18 +21,27 @@ func UserList(c *gin.Context) {
 
 	row := db.GetDB().QueryRow(query, id)
 
-	var user model.User
-	err := row.Scan(&user.UserID, &user.Username, &user.Password, &user.HakAkses, &user.IdHakAkses)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user"})
-		}
+	var user model.GetUser
+	err := row.Scan(&user.UserID, &user.Username, &user.HakAkses, &user.IdHakAkses)
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{
+			"status":  "Error",
+			"message": "User not found",
+		})
+		return
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "Error",
+			"message": "Failed to fetch user",
+		})
 		return
 	}
 
-	c.JSON(http.StatusOK, user)
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "OK",
+		"message": "Berhasil",
+		"data":    user,
+	})
 }
 
 func UserDelete(c *gin.Context) {
@@ -40,11 +49,26 @@ func UserDelete(c *gin.Context) {
 
 	query := `DELETE FROM "userAccount" WHERE id = $1`
 
-	_, err := db.GetDB().Exec(query, id)
+	res, err := db.GetDB().Exec(query, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "Error",
+			"message": "Failed to delete user",
+		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"status":  "Error",
+			"message": "User not found",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "OK",
+		"message": "User deleted successfully",
+	})
 }

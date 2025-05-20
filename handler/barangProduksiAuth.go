@@ -10,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ListBarangProduksi lists all barangProduksi with related satuan and gudang names
 func ListBarangProduksi(c *gin.Context) {
 	query := `
 	SELECT bp."id", bp."nama", bp."kode_barang", bp."harga_standar", bp."harga_real", 
@@ -23,7 +22,7 @@ func ListBarangProduksi(c *gin.Context) {
 
 	rows, err := db.GetDB().Query(query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch barang produksi"})
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to fetch barang produksi"})
 		return
 	}
 	defer rows.Close()
@@ -34,21 +33,24 @@ func ListBarangProduksi(c *gin.Context) {
 		err := rows.Scan(&bp.ID, &bp.Nama, &bp.KodeBarang, &bp.HargaStandar, &bp.HargaReal,
 			&bp.SatuanID, &bp.SatuanNama, &bp.Stok, &bp.GudangID, &bp.GudangNama)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse barang produksi"})
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to parse barang produksi"})
 			return
 		}
 		list = append(list, bp)
 	}
 
-	c.JSON(http.StatusOK, list)
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "OK",
+		"message": "Berhasil",
+		"data":    list,
+	})
 }
 
-// GetBarangProduksiByID returns single barangProduksi by ID
 func GetBarangProduksiByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid id"})
+		c.JSON(http.StatusBadRequest, gin.H{"status": "Error", "message": "Invalid id"})
 		return
 	}
 
@@ -65,24 +67,26 @@ func GetBarangProduksiByID(c *gin.Context) {
 	var bp model.BarangProduksi
 	err = row.Scan(&bp.ID, &bp.Nama, &bp.KodeBarang, &bp.HargaStandar, &bp.HargaReal,
 		&bp.SatuanID, &bp.SatuanNama, &bp.Stok, &bp.GudangID, &bp.GudangNama)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Barang produksi not found"})
-		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch barang produksi"})
-		}
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"status": "Error", "message": "Barang produksi not found"})
+		return
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to fetch barang produksi"})
 		return
 	}
 
-	c.JSON(http.StatusOK, bp)
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "OK",
+		"message": "Berhasil",
+		"data":    bp,
+	})
 }
 
-// AddBarangProduksi creates a new barangProduksi
 func AddBarangProduksi(c *gin.Context) {
 	var bp model.BarangProduksi
 
 	if err := c.ShouldBindJSON(&bp); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+		c.JSON(http.StatusBadRequest, gin.H{"status": "Error", "message": "Invalid request payload"})
 		return
 	}
 
@@ -94,25 +98,28 @@ func AddBarangProduksi(c *gin.Context) {
 	err := db.GetDB().QueryRow(query, bp.Nama, bp.KodeBarang, bp.HargaStandar, bp.HargaReal,
 		bp.SatuanID, bp.Stok, bp.GudangID).Scan(&bp.ID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create barang produksi"})
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to create barang produksi"})
 		return
 	}
 
-	c.JSON(http.StatusCreated, bp)
+	c.JSON(http.StatusCreated, gin.H{
+		"status":  "OK",
+		"message": "Berhasil",
+		"data":    bp,
+	})
 }
 
-// UpdateBarangProduksi updates barangProduksi by ID
 func UpdateBarangProduksi(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid id"})
+		c.JSON(http.StatusBadRequest, gin.H{"status": "Error", "message": "Invalid id"})
 		return
 	}
 
 	var bp model.BarangProduksi
 	if err := c.ShouldBindJSON(&bp); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+		c.JSON(http.StatusBadRequest, gin.H{"status": "Error", "message": "Invalid request payload"})
 		return
 	}
 
@@ -125,40 +132,45 @@ func UpdateBarangProduksi(c *gin.Context) {
 	res, err := db.GetDB().Exec(query, bp.Nama, bp.KodeBarang, bp.HargaStandar, bp.HargaReal,
 		bp.SatuanID, bp.Stok, bp.GudangID, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update barang produksi"})
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to update barang produksi"})
 		return
 	}
 
 	rowsAffected, _ := res.RowsAffected()
 	if rowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Barang produksi not found"})
+		c.JSON(http.StatusNotFound, gin.H{"status": "Error", "message": "Barang produksi not found"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Barang produksi updated successfully"})
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "OK",
+		"message": "Barang produksi updated successfully",
+	})
 }
 
-// DeleteBarangProduksi deletes barangProduksi by ID
 func DeleteBarangProduksi(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid id"})
+		c.JSON(http.StatusBadRequest, gin.H{"status": "Error", "message": "Invalid id"})
 		return
 	}
 
 	query := `DELETE FROM "barangProduksi" WHERE "id"=$1`
 	res, err := db.GetDB().Exec(query, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete barang produksi"})
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to delete barang produksi"})
 		return
 	}
 
 	rowsAffected, _ := res.RowsAffected()
 	if rowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Barang produksi not found"})
+		c.JSON(http.StatusNotFound, gin.H{"status": "Error", "message": "Barang produksi not found"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Barang produksi deleted successfully"})
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "OK",
+		"message": "Barang produksi deleted successfully",
+	})
 }
