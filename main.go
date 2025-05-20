@@ -20,6 +20,7 @@ func main() {
 	// Public routes
 	r.POST("/login", handler.Login)
 	r.POST("/register", handler.Register)
+	r.GET("/users", handler.AllUserList)
 	r.GET("/users/:id", handler.UserList)
 	r.DELETE("/users/:id", handler.UserDelete)
 

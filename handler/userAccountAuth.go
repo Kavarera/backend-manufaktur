@@ -44,6 +44,46 @@ func UserList(c *gin.Context) {
 	})
 }
 
+func AllUserList(c *gin.Context) {
+	query := `
+		SELECT ua."id", ua."username", ha."hak_akses", ua."hak_akses"
+		FROM "userAccount" ua
+		JOIN "hakAkses" ha ON ua."hak_akses" = ha."id"
+	`
+
+	row, err := db.GetDB().Query(query)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to fetch users list"})
+		return
+	}
+	defer row.Close()
+
+	var list []model.GetUser
+	for row.Next() {
+		var user model.GetUser
+		err := row.Scan(&user.UserID, &user.Username, &user.HakAkses, &user.IdHakAkses)
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{
+				"status":  "Error",
+				"message": "No User Availabale"})
+			return
+		} else if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status":  "Error",
+				"message": "Failed to fetch user",
+			})
+			return
+		}
+		list = append(list, user)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "OK",
+		"message": "Berhasil",
+		"data":    list,
+	})
+}
+
 func UserDelete(c *gin.Context) {
 	id := c.Param("id")
 
