@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func ListRencanaProduksi(c *gin.Context) {
@@ -85,12 +86,15 @@ func AddRencanaProduksi(c *gin.Context) {
 		return
 	}
 
+	// Generate UUID
+	id := uuid.New().String()
+
 	query := `
 	INSERT INTO "rencanaProduksi" ("id", "id_barang_produksi", "tanggal_mulai", "tanggal_selesai")
 	VALUES ($1, $2, $3, $4)
 	`
 
-	_, err = db.GetDB().Exec(query, payload.ID, payload.BarangProduksiID, tanggalMulai, tanggalSelesai)
+	_, err = db.GetDB().Exec(query, id, payload.BarangProduksiID, tanggalMulai, tanggalSelesai)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to create rencana produksi"})
 		return
@@ -100,7 +104,7 @@ func AddRencanaProduksi(c *gin.Context) {
 		"status":  "OK",
 		"message": "Berhasil",
 		"data": gin.H{
-			"id":               payload.ID,
+			"id":               id,
 			"barangProduksiId": payload.BarangProduksiID,
 			"tanggalMulai":     tanggalMulai,
 			"tanggalSelesai":   tanggalSelesai,
