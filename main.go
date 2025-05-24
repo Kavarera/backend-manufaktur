@@ -26,6 +26,11 @@ func main() {
 	r.PUT("/barangMentah/:id", handler.UpdateMentah)
 	r.DELETE("/barangMentah/:id", handler.DeleteMentah)
 
+	r.POST("/perintahKerja", handler.AddPerintahKerja)
+	r.GET("/perintahKerja", handler.ListPerintahKerja)
+	r.PUT("/perintahKerja/:id", handler.UpdatePerintahKerja)
+	r.DELETE("/perintahKerja/:id", handler.DeletePerintahKerja)
+
 	authGroup := r.Group("/auth")
 	authGroup.Use(middleware.RoleBasedAuth([]string{"SuperAdmin"}))
 	{
