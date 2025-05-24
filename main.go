@@ -21,6 +21,11 @@ func main() {
 	// Public routes
 	r.POST("/login", handler.Login)
 
+	r.POST("/barangMentah", handler.AddMentah)
+	r.GET("/barangMentah", handler.ListMentah)
+	r.PUT("/barangMentah/:id", handler.UpdateMentah)
+	r.DELETE("/barangMentah/:id", handler.DeleteMentah)
+
 	authGroup := r.Group("/auth")
 	authGroup.Use(middleware.RoleBasedAuth([]string{"SuperAdmin"}))
 	{
@@ -33,11 +38,6 @@ func main() {
 	manageGroup := r.Group("/auth")
 	manageGroup.Use(middleware.RoleBasedAuth([]string{"BarangManagement"}))
 	{
-		r.POST("/barangMentah", handler.AddMentah)
-		r.GET("/barangMentah", handler.ListMentah)
-		r.PUT("/barangMentah/:id", handler.UpdateMentah)
-		r.DELETE("/barangMentah/:id", handler.DeleteMentah)
-
 		r.GET("/barangProduksi", handler.ListBarangProduksi)
 		r.GET("/barangProduksi/:id", handler.GetBarangProduksiByID)
 		r.POST("/barangProduksi", handler.AddBarangProduksi)

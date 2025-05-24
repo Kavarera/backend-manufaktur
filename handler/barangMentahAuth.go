@@ -2,28 +2,31 @@ package handler
 
 import (
 	"database/sql"
+	"fmt"
 	"manufacture_API/db"
 	"manufacture_API/model"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
 func ListMentah(c *gin.Context) {
-	query :=
-		`
-		SELECT bm."id", bm."nama", bm."kode_barang", bm."harga_standar", bm."satuan", st."nama" AS satuan_nama,
-      		   bm."stok", bm."gudang", g."nama" AS gudang_nama
-		FROM "barangMentah" bm
-		LEFT JOIN "satuanTurunan" st ON bm."satuan" = st."id"
-		LEFT JOIN "gudang" g ON bm."gudang" = g."id"
-		ORDER BY bm."id";
+	query := `
+	SELECT bm."id", bm."nama", bm."kode_barang", bm."harga_standar", bm."satuan", st."nama" AS satuan_nama,
+			bm."stok", bm."gudang", g."nama" AS gudang_nama,
+			bm."satuan_utama", su."nama" AS satuan_utama_nama
+	FROM "barangMentah" bm
+	LEFT JOIN "satuanTurunan" st ON bm."satuan" = st."id"
+	LEFT JOIN "gudang" g ON bm."gudang" = g."id"
+	LEFT JOIN "barangSatuan" su ON bm."satuan_utama" = su."id"
+	ORDER BY bm."id";
 	`
 
 	rows, err := db.GetDB().Query(query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch barang list"})
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to fetch barang list"})
 		return
 	}
 	defer rows.Close()
@@ -33,12 +36,13 @@ func ListMentah(c *gin.Context) {
 	for rows.Next() {
 		var barang model.BarangMentah
 		err := rows.Scan(&barang.ID, &barang.Nama, &barang.KodeBarang, &barang.HargaStandar,
-			&barang.SatuanID, &barang.SatuanNama, &barang.Stok, &barang.GudangID, &barang.GudangNama)
+			&barang.SatuanID, &barang.SatuanNama, &barang.Stok, &barang.GudangID, &barang.GudangNama,
+			&barang.SatuanUtamaID, &barang.SatuanUtamaNama)
 		if err != nil {
 			if err != sql.ErrNoRows {
-				c.JSON(http.StatusNotFound, gin.H{"error": "Barang Mentah Not Found"})
+				c.JSON(http.StatusNotFound, gin.H{"status": "Error", "message": "Barang Mentah Not Found"})
 			}
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse barang data"})
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to parse barang data"})
 			return
 		}
 		barangList = append(barangList, barang)
@@ -59,15 +63,33 @@ func AddMentah(c *gin.Context) {
 		return
 	}
 
-	query := `
-	INSERT INTO "barangMentah" ("nama", "kode_barang", "harga_standar", "satuan", "stok", "gudang")
-	VALUES ($1, $2, $3, $4, $5, $6) RETURNING "id"
-	`
+	columns := []string{"nama", "kode_barang", "harga_standar", "stok", "gudang"}
+	values := []interface{}{barang.Nama, barang.KodeBarang, barang.HargaStandar, barang.Stok, barang.GudangID}
+	placeholders := []string{"$1", "$2", "$3", "$4", "$5"}
+	argPos := 6
 
-	err := db.GetDB().QueryRow(query, barang.Nama, barang.KodeBarang, barang.HargaStandar,
-		barang.SatuanID, barang.Stok, barang.GudangID).Scan(&barang.ID)
+	if barang.SatuanID != nil {
+		columns = append(columns, "satuan")
+		values = append(values, *barang.SatuanID)
+		placeholders = append(placeholders, fmt.Sprintf("$%d", argPos))
+		argPos++
+	}
+	if barang.SatuanUtamaID != nil {
+		columns = append(columns, "satuan_utama")
+		values = append(values, *barang.SatuanUtamaID)
+		placeholders = append(placeholders, fmt.Sprintf("$%d", argPos))
+		argPos++
+	}
+
+	query := fmt.Sprintf(`
+		INSERT INTO "barangMentah" (%s)
+		VALUES (%s)
+		RETURNING "id"
+	`, strings.Join(columns, ","), strings.Join(placeholders, ","))
+
+	err := db.GetDB().QueryRow(query, values...).Scan(&barang.ID) // scan id here
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to create barang"})
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to create barang: " + err.Error()})
 		return
 	}
 
@@ -92,14 +114,55 @@ func UpdateMentah(c *gin.Context) {
 		return
 	}
 
-	query := `
-	UPDATE "barangMentah"
-	SET "nama"=$1, "kode_barang"=$2, "harga_standar"=$3, "satuan"=$4, "stok"=$5, "gudang"=$6
-	WHERE "id"=$7
-	`
+	setClauses := []string{}
+	values := []interface{}{}
+	argPos := 1
 
-	res, err := db.GetDB().Exec(query, barang.Nama, barang.KodeBarang, barang.HargaStandar,
-		barang.SatuanID, barang.Stok, barang.GudangID, id)
+	if barang.Nama != "" {
+		setClauses = append(setClauses, fmt.Sprintf(`"nama"=$%d`, argPos))
+		values = append(values, barang.Nama)
+		argPos++
+	}
+	if barang.KodeBarang != "" {
+		setClauses = append(setClauses, fmt.Sprintf(`"kode_barang"=$%d`, argPos))
+		values = append(values, barang.KodeBarang)
+		argPos++
+	}
+	if barang.HargaStandar != 0 {
+		setClauses = append(setClauses, fmt.Sprintf(`"harga_standar"=$%d`, argPos))
+		values = append(values, barang.HargaStandar)
+		argPos++
+	}
+	if barang.Stok != 0 {
+		setClauses = append(setClauses, fmt.Sprintf(`"stok"=$%d`, argPos))
+		values = append(values, barang.Stok)
+		argPos++
+	}
+	if barang.GudangID != 0 {
+		setClauses = append(setClauses, fmt.Sprintf(`"gudang"=$%d`, argPos))
+		values = append(values, barang.GudangID)
+		argPos++
+	}
+	if barang.SatuanID != nil {
+		setClauses = append(setClauses, fmt.Sprintf(`"satuan"=$%d`, argPos))
+		values = append(values, barang.SatuanID)
+		argPos++
+	}
+	if barang.SatuanUtamaID != nil {
+		setClauses = append(setClauses, fmt.Sprintf(`"satuan_utama"=$%d`, argPos))
+		values = append(values, barang.SatuanUtamaID)
+		argPos++
+	}
+
+	if len(setClauses) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "Error", "message": "No fields to update"})
+		return
+	}
+
+	values = append(values, id)
+	query := fmt.Sprintf(`UPDATE "barangMentah" SET %s WHERE "id"=$%d`, strings.Join(setClauses, ", "), argPos)
+
+	res, err := db.GetDB().Exec(query, values...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to update barang"})
 		return
