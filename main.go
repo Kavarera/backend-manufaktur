@@ -18,6 +18,10 @@ func main() {
 	// Create Gin router with default middleware (logger and recovery)
 	r := gin.Default()
 
+	r.GET("/users", handler.AllUserList)
+	r.GET("/users/:username", handler.UserList)
+	r.DELETE("/users/:username", handler.UserDelete)
+
 	// Public routes
 	r.POST("/login", handler.Login)
 
@@ -36,8 +40,8 @@ func main() {
 	{
 		authGroup.POST("/register", handler.Register)
 		authGroup.GET("/users", handler.AllUserList)
-		authGroup.GET("/users/:id", handler.UserList)
-		authGroup.DELETE("/users/:id", handler.UserDelete)
+		authGroup.GET("/users/:username", handler.UserList)
+		authGroup.DELETE("/users/:username", handler.UserDelete)
 	}
 
 	manageGroup := r.Group("/auth")
