@@ -20,7 +20,6 @@ func main() {
 
 	// Public routes
 	r.POST("/login", handler.Login)
-	r.POST("/register", handler.Register)
 
 	r.POST("/barangMentah", handler.AddMentah)
 	r.GET("/barangMentah", handler.ListMentah)
@@ -35,7 +34,7 @@ func main() {
 	authGroup := r.Group("/auth")
 	authGroup.Use(middleware.RoleBasedAuth([]string{"SuperAdmin"}))
 	{
-
+		authGroup.POST("/register", handler.Register)
 		authGroup.GET("/users", handler.AllUserList)
 		authGroup.GET("/users/:id", handler.UserList)
 		authGroup.DELETE("/users/:id", handler.UserDelete)
