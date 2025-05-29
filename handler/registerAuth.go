@@ -2,16 +2,17 @@ package handler
 
 import (
 	"database/sql"
+	"fmt"
 	"manufacture_API/db"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func Register(c *gin.Context) {
 	var user struct {
-		Id         string `json:"id"`
 		Username   string `json:"username"`
 		Password   string `json:"password"`
 		IdHakAkses string `json:"hak_akses"`
@@ -24,6 +25,9 @@ func Register(c *gin.Context) {
 		})
 		return
 	}
+
+	// Generate UUID for user ID
+	userID := uuid.New().String()
 
 	roleID, err := strconv.Atoi(user.IdHakAkses)
 	if err != nil {
@@ -74,11 +78,15 @@ func Register(c *gin.Context) {
 		INSERT INTO "userAccount" ("id", "username", "password", "hak_akses")
 		VALUES ($1, $2, $3, $4)
 	`
-	_, err = db.GetDB().Exec(query, user.Id, user.Username, hashedPassword, roleID)
+	_, err = db.GetDB().Exec(query, userID, user.Username, hashedPassword, roleID)
 	if err != nil {
+		fmt.Printf("Database insert error: %v\n", err)
+		fmt.Printf("UserID: %s, Username: %s, RoleID: %d\n", userID, user.Username, roleID)
+
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status":  "Error",
 			"message": "Failed to register user",
+			"error":   err.Error(),
 		})
 		return
 	}
@@ -87,7 +95,7 @@ func Register(c *gin.Context) {
 		"status":  "OK",
 		"message": "Berhasil",
 		"data": gin.H{
-			"userId":   user.Id,
+			"userId":   userID,
 			"username": user.Username,
 			"roleId":   roleID,
 		},
