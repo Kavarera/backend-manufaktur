@@ -51,27 +51,49 @@ func main() {
 	manageGroup := r.Group("/auth")
 	manageGroup.Use(middleware.RoleBasedAuth([]string{"BarangManagement"}))
 	{
-		r.GET("/barangProduksi", handler.ListBarangProduksi)
-		r.GET("/barangProduksi/:id", handler.GetBarangProduksiByID)
-		r.POST("/barangProduksi", handler.AddBarangProduksi)
-		r.PUT("/barangProduksi/:id", handler.UpdateBarangProduksi)
-		r.DELETE("/barangProduksi/:id", handler.DeleteBarangProduksi)
+		manageGroup.GET("/barangProduksi", handler.ListBarangProduksi)
+		manageGroup.GET("/barangProduksi/:id", handler.GetBarangProduksiByID)
+		manageGroup.POST("/barangProduksi", handler.AddBarangProduksi)
+		manageGroup.PUT("/barangProduksi/:id", handler.UpdateBarangProduksi)
+		manageGroup.DELETE("/barangProduksi/:id", handler.DeleteBarangProduksi)
 
-		r.GET("/gudang", handler.ListGudang)
-		r.GET("/gudang/:id", handler.GetGudangByID)
-		r.POST("/gudang", handler.AddGudang)
-		r.PUT("/gudang/:id", handler.UpdateGudang)
-		r.DELETE("/gudang/:id", handler.DeleteGudang)
+		manageGroup.GET("/gudang", handler.ListGudang)
+		manageGroup.GET("/gudang/:id", handler.GetGudangByID)
+		manageGroup.POST("/gudang", handler.AddGudang)
+		manageGroup.PUT("/gudang/:id", handler.UpdateGudang)
+		manageGroup.DELETE("/gudang/:id", handler.DeleteGudang)
+
+		manageGroup.POST("/barangMentah", handler.AddMentah)
+		manageGroup.GET("/barangMentah", handler.ListMentah)
+		manageGroup.PUT("/barangMentah/:id", handler.UpdateMentah)
+		manageGroup.DELETE("/barangMentah/:id", handler.DeleteMentah)
 	}
 
 	RPGroup := r.Group("/auth")
 	RPGroup.Use(middleware.RoleBasedAuth([]string{"RencanaProduksi"}))
 	{
-		r.GET("/rencanaProduksi", handler.ListRencanaProduksi)
-		r.GET("/rencanaProduksi/:id", handler.GetRencanaProduksiByID)
-		r.POST("/rencanaProduksi", handler.AddRencanaProduksi)
-		r.PUT("/rencanaProduksi/:id", handler.UpdateRencanaProduksi)
-		r.DELETE("/rencanaProduksi/:id", handler.DeleteRencanaProduksi)
+		RPGroup.GET("/rencanaProduksi", handler.ListRencanaProduksi)
+		RPGroup.GET("/rencanaProduksi/:id", handler.GetRencanaProduksiByID)
+		RPGroup.POST("/rencanaProduksi", handler.AddRencanaProduksi)
+		RPGroup.PUT("/rencanaProduksi/:id", handler.UpdateRencanaProduksi)
+		RPGroup.DELETE("/rencanaProduksi/:id", handler.DeleteRencanaProduksi)
+	}
+
+	PRGroup := r.Group("/auth")
+	PRGroup.Use(middleware.RoleBasedAuth([]string{"PrintahKerja"}))
+	{
+		PRGroup.POST("/perintahKerja", handler.AddPerintahKerja)
+		PRGroup.GET("/perintahKerja", handler.ListPerintahKerja)
+		PRGroup.PUT("/perintahKerja/:id", handler.UpdatePerintahKerja)
+		PRGroup.POST("/perintahKerja/:id/upload-document", handler.UploadDocumentForPerintahKerja)
+		PRGroup.GET("/perintahKerja/:id/download-document", handler.DownloadDocument)
+		PRGroup.PUT("/updatePengerjaan/:id", handler.UpdateProsesPengerjaan)
+	}
+
+	HPRGroup := r.Group("/auth")
+	HPRGroup.Use(middleware.RoleBasedAuth([]string{"PrintahKerja"}))
+	{
+		PRGroup.DELETE("/perintahKerja/:id", handler.DeletePerintahKerja)
 	}
 
 	// Run server on port 8080

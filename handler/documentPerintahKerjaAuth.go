@@ -121,7 +121,7 @@ func DownloadDocument(c *gin.Context) {
 
 	var documentURL, documentName sql.NullString
 	err := db.GetDB().QueryRow(
-		`SELECT "document_url", "document_name" FROM "perintahKerja" WHERE "id"=$1`,
+		`SELECT "document_url", "document_nama" FROM "perintahKerja" WHERE "id"=$1`,
 		id,
 	).Scan(&documentURL, &documentName)
 
