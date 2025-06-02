@@ -34,6 +34,10 @@ func main() {
 	r.GET("/perintahKerja", handler.ListPerintahKerja)
 	r.PUT("/perintahKerja/:id", handler.UpdatePerintahKerja)
 	r.DELETE("/perintahKerja/:id", handler.DeletePerintahKerja)
+	r.POST("/perintahKerja/:id/upload-document", handler.UploadDocumentForPerintahKerja)
+	r.GET("/perintahKerja/:id/download-document", handler.DownloadDocument)
+
+	r.PUT("/updatePengerjaan/:id", handler.UpdateProsesPengerjaan)
 
 	authGroup := r.Group("/auth")
 	authGroup.Use(middleware.RoleBasedAuth([]string{"SuperAdmin"}))
