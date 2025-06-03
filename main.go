@@ -46,6 +46,37 @@ func main() {
 		authGroup.GET("/users", handler.AllUserList)
 		authGroup.GET("/users/:username", handler.UserList)
 		authGroup.DELETE("/users/:username", handler.UserDelete)
+
+		authGroup.GET("/barangProduksi", handler.ListBarangProduksi)
+		authGroup.GET("/barangProduksi/:id", handler.GetBarangProduksiByID)
+		authGroup.POST("/barangProduksi", handler.AddBarangProduksi)
+		authGroup.PUT("/barangProduksi/:id", handler.UpdateBarangProduksi)
+		authGroup.DELETE("/barangProduksi/:id", handler.DeleteBarangProduksi)
+
+		authGroup.GET("/gudang", handler.ListGudang)
+		authGroup.GET("/gudang/:id", handler.GetGudangByID)
+		authGroup.POST("/gudang", handler.AddGudang)
+		authGroup.PUT("/gudang/:id", handler.UpdateGudang)
+		authGroup.DELETE("/gudang/:id", handler.DeleteGudang)
+
+		authGroup.POST("/barangMentah", handler.AddMentah)
+		authGroup.GET("/barangMentah", handler.ListMentah)
+		authGroup.PUT("/barangMentah/:id", handler.UpdateMentah)
+		authGroup.DELETE("/barangMentah/:id", handler.DeleteMentah)
+
+		authGroup.GET("/rencanaProduksi", handler.ListRencanaProduksi)
+		authGroup.GET("/rencanaProduksi/:id", handler.GetRencanaProduksiByID)
+		authGroup.POST("/rencanaProduksi", handler.AddRencanaProduksi)
+		authGroup.PUT("/rencanaProduksi/:id", handler.UpdateRencanaProduksi)
+		authGroup.DELETE("/rencanaProduksi/:id", handler.DeleteRencanaProduksi)
+
+		authGroup.POST("/perintahKerja", handler.AddPerintahKerja)
+		authGroup.GET("/perintahKerja", handler.ListPerintahKerja)
+		authGroup.PUT("/perintahKerja/:id", handler.UpdatePerintahKerja)
+		authGroup.POST("/perintahKerja/:id/upload-document", handler.UploadDocumentForPerintahKerja)
+		authGroup.GET("/perintahKerja/:id/download-document", handler.DownloadDocument)
+		authGroup.PUT("/updatePengerjaan/:id", handler.UpdateProsesPengerjaan)
+		authGroup.DELETE("/perintahKerja/:id", handler.DeletePerintahKerja)
 	}
 
 	manageGroup := r.Group("/auth")
