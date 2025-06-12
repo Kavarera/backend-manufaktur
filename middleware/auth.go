@@ -59,6 +59,7 @@ func checkUserPermission(userRole, requiredPermission string) bool {
 			"rencana:create", "rencana:read", "rencana:update", "rencana:delete", "jadwal:read",
 			"perintah:create", "perintah:read", "perintah:update", "perintah:delete",
 			"pengambilan:create", "pengambilan:read", "pengambilan:update", "pengambilan:delete",
+			"selesai:create", "pselesai:read", "selesai:update", "selesai:delete",
 		},
 		"BarangManagement": {
 			"barang:create", "barang:read", "barang:update", "barang:delete",
@@ -76,6 +77,9 @@ func checkUserPermission(userRole, requiredPermission string) bool {
 		},
 		"PengambilanBarangBaku": {
 			"pengambilan:create", "pengambilan:read", "pengambilan:update", "pengambilan:delete",
+		},
+		"PengambilanBarangJadi": {
+			"selesai:create", "pselesai:read", "selesai:update", "selesai:delete",
 		},
 	}
 
