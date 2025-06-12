@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"manufacture_API/db"
 	"manufacture_API/model"
 	"net/http"
@@ -62,12 +63,30 @@ func AddPengambilanBarangBaku(c *gin.Context) {
 // GetPengambilanBarangBaku lists all pengambilanBarangBaku for a given perintahKerja ID
 func GetPengambilanBarangBaku(c *gin.Context) {
 	query := `
-		SELECT id, id_perintah_kerja, id_barang_mentah, kebutuhan
-		FROM "pengambilanBarangBaku"
+		SELECT 
+			pbb.id,
+			pbb.id_perintah_kerja,
+			pbb.id_barang_mentah,
+			pbb.kebutuhan,
+			pk.tanggal_rilis,
+			pk.tanggal_progres,
+			pk.tanggal_selesai,
+			pk.status AS perintah_kerja_status,
+			bm.nama AS barang_mentah_nama,
+			bm.kode_barang AS barang_mentah_kode,
+			bm.harga_standar AS barang_mentah_harga_standar,
+			bm.stok AS barang_mentah_stok
+		FROM 
+			"pengambilanBarangBaku" pbb
+		JOIN 
+			"perintahKerja" pk ON pk.id = pbb.id_perintah_kerja
+		JOIN 
+			"barangMentah" bm ON bm.id = pbb.id_barang_mentah
 	`
 
 	rows, err := db.GetDB().Query(query)
 	if err != nil {
+		fmt.Println("error:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch pengambilan barang baku"})
 		return
 	}
@@ -76,7 +95,21 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 	var result []model.PengambilanBarangBaku
 	for rows.Next() {
 		var item model.PengambilanBarangBaku
-		if err := rows.Scan(&item.ID, &item.IDPerintahKerja, &item.IDBarangMentah, &item.Kebutuhan); err != nil {
+		// Scan the data into the result object
+		if err := rows.Scan(
+			&item.ID,
+			&item.IDPerintahKerja,
+			&item.IDBarangMentah,
+			&item.Kebutuhan,
+			&item.TanggalRilis,
+			&item.TanggalProgres,
+			&item.TanggalSelesai,
+			&item.StatusPerintahKerja,
+			&item.NamaBarangMentah,
+			&item.KodeBarangMentah,
+			&item.HargaStandarBarangMentah,
+			&item.StokBarangMentah,
+		); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse pengambilan barang baku"})
 			return
 		}
