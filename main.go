@@ -11,132 +11,65 @@ import (
 )
 
 func main() {
-
 	// Initialize DB connection
 	db.InitDB()
 
-	// Create Gin router with default middleware (logger and recovery)
+	// Create Gin router with default middleware
 	r := gin.Default()
 
-	// Public routes
+	// Public routes (no authentication)
 	r.POST("/login", handler.Login)
-	r.GET("/jadwalProduksi", handler.ListRencanaProduksi)
-	r.POST("/rencanaProduksi", handler.AddRencanaProduksi)
-	r.GET("/rencanaProduksi", handler.ListRencanaProduksi)
-	r.PUT("/rencanaProduksi/:id", handler.UpdateRencanaProduksi)
-	r.DELETE("/rencanaProduksi/:id", handler.DeleteRencanaProduksi)
 
-	authGroup := r.Group("/admin")
-	authGroup.Use(middleware.RoleBasedAuth([]string{"SuperAdmin"}))
-	{
-		authGroup.POST("/register", handler.Register)
-		authGroup.GET("/users", handler.AllUserList)
-		authGroup.GET("/users/:username", handler.UserList)
-		authGroup.DELETE("/users/:username", handler.UserDelete)
+	// User Management Routes
+	r.POST("/register", middleware.PermissionMiddleware("users:create"), handler.Register)
+	r.GET("/users", middleware.PermissionMiddleware("users:read"), handler.AllUserList)
+	r.GET("/users/:username", middleware.PermissionMiddleware("users:read"), handler.UserList)
+	r.DELETE("/users/:username", middleware.PermissionMiddleware("users:delete"), handler.UserDelete)
 
-		authGroup.GET("/barangProduksi", handler.ListBarangProduksi)
-		authGroup.GET("/barangProduksi/:id", handler.GetBarangProduksiByID)
-		authGroup.POST("/barangProduksi", handler.AddBarangProduksi)
-		authGroup.PUT("/barangProduksi/:id", handler.UpdateBarangProduksi)
-		authGroup.DELETE("/barangProduksi/:id", handler.DeleteBarangProduksi)
+	// Barang Produksi Routes
+	r.GET("/barangProduksi", middleware.PermissionMiddleware("barang:read"), handler.ListBarangProduksi)
+	r.GET("/barangProduksi/:id", middleware.PermissionMiddleware("barang:read"), handler.GetBarangProduksiByID)
+	r.POST("/barangProduksi", middleware.PermissionMiddleware("barang:create"), handler.AddBarangProduksi)
+	r.PUT("/barangProduksi/:id", middleware.PermissionMiddleware("barang:update"), handler.UpdateBarangProduksi)
+	r.DELETE("/barangProduksi/:id", middleware.PermissionMiddleware("barang:delete"), handler.DeleteBarangProduksi)
 
-		authGroup.GET("/gudang", handler.ListGudang)
-		authGroup.GET("/gudang/:id", handler.GetGudangByID)
-		authGroup.POST("/gudang", handler.AddGudang)
-		authGroup.PUT("/gudang/:id", handler.UpdateGudang)
-		authGroup.DELETE("/gudang/:id", handler.DeleteGudang)
+	// Gudang Routes
+	r.GET("/gudang", middleware.PermissionMiddleware("gudang:read"), handler.ListGudang)
+	r.GET("/gudang/:id", middleware.PermissionMiddleware("gudang:read"), handler.GetGudangByID)
+	r.POST("/gudang", middleware.PermissionMiddleware("gudang:create"), handler.AddGudang)
+	r.PUT("/gudang/:id", middleware.PermissionMiddleware("gudang:update"), handler.UpdateGudang)
+	r.DELETE("/gudang/:id", middleware.PermissionMiddleware("gudang:delete"), handler.DeleteGudang)
 
-		authGroup.POST("/barangMentah", handler.AddMentah)
-		authGroup.GET("/barangMentah", handler.ListMentah)
-		authGroup.PUT("/barangMentah/:id", handler.UpdateMentah)
-		authGroup.DELETE("/barangMentah/:id", handler.DeleteMentah)
+	// Barang Mentah Routes
+	r.GET("/barangMentah", middleware.PermissionMiddleware("mentah:read"), handler.ListMentah)
+	r.POST("/barangMentah", middleware.PermissionMiddleware("mentah:create"), handler.AddMentah)
+	r.PUT("/barangMentah/:id", middleware.PermissionMiddleware("mentah:update"), handler.UpdateMentah)
+	r.DELETE("/barangMentah/:id", middleware.PermissionMiddleware("mentah:delete"), handler.DeleteMentah)
 
-		authGroup.GET("/rencanaProduksi", handler.ListRencanaProduksi)
-		authGroup.GET("/rencanaProduksi/:id", handler.GetRencanaProduksiByID)
-		authGroup.POST("/rencanaProduksi", handler.AddRencanaProduksi)
-		authGroup.PUT("/rencanaProduksi/:id", handler.UpdateRencanaProduksi)
-		authGroup.DELETE("/rencanaProduksi/:id", handler.DeleteRencanaProduksi)
-		authGroup.GET("/jadwalProduksi", handler.ListRencanaProduksi)
+	// Rencana Produksi Routes
+	r.GET("/rencanaProduksi", middleware.PermissionMiddleware("rencana:read"), handler.ListRencanaProduksi)
+	r.GET("/rencanaProduksi/:id", middleware.PermissionMiddleware("rencana:read"), handler.GetRencanaProduksiByID)
+	r.POST("/rencanaProduksi", middleware.PermissionMiddleware("rencana:create"), handler.AddRencanaProduksi)
+	r.PUT("/rencanaProduksi/:id", middleware.PermissionMiddleware("rencana:update"), handler.UpdateRencanaProduksi)
+	r.DELETE("/rencanaProduksi/:id", middleware.PermissionMiddleware("rencana:delete"), handler.DeleteRencanaProduksi)
+	r.GET("/jadwalProduksi", middleware.PermissionMiddleware("jadwal:read"), handler.ListRencanaProduksi)
 
-		authGroup.POST("/perintahKerja", handler.AddPerintahKerja)
-		authGroup.GET("/perintahKerja", handler.ListPerintahKerja)
-		authGroup.PUT("/perintahKerja/:id", handler.UpdatePerintahKerja)
-		authGroup.POST("/perintahKerja/:id/upload-document", handler.UploadDocumentForPerintahKerja)
-		authGroup.GET("/perintahKerja/:id/download-document", handler.DownloadDocument)
-		authGroup.PUT("/updatePengerjaan/:id", handler.UpdateProsesPengerjaan)
-		authGroup.DELETE("/perintahKerja/:id", handler.DeletePerintahKerja)
+	// Perintah Kerja Routes
+	r.GET("/perintahKerja", middleware.PermissionMiddleware("perintah:read"), handler.ListPerintahKerja)
+	r.POST("/perintahKerja", middleware.PermissionMiddleware("perintah:create"), handler.AddPerintahKerja)
+	r.PUT("/perintahKerja/:id", middleware.PermissionMiddleware("perintah:update"), handler.UpdatePerintahKerja)
+	r.DELETE("/perintahKerja/:id", middleware.PermissionMiddleware("perintah:delete"), handler.DeletePerintahKerja)
+	r.POST("/perintahKerja/:id/upload-document", middleware.PermissionMiddleware("perintah:update"), handler.UploadDocumentForPerintahKerja)
+	r.GET("/perintahKerja/:id/download-document", middleware.PermissionMiddleware("perintah:read"), handler.DownloadDocument)
+	r.PUT("/updatePengerjaan/:id", middleware.PermissionMiddleware("perintah:update"), handler.UpdateProsesPengerjaan)
 
-		authGroup.POST("/pengambilanBarangBaku", handler.AddPengambilanBarangBaku)
-		authGroup.GET("/pengambilanBarangBaku", handler.GetPengambilanBarangBaku)
-		authGroup.PUT("/pengambilanBarangBaku/:id", handler.UpdatePengambilanBarangBaku)
-		authGroup.DELETE("/pengambilanBarangBaku/:id", handler.DeletePengambilanBarangBaku)
-	}
+	// Pengambilan Barang Baku Routes
+	r.GET("/pengambilanBarangBaku", middleware.PermissionMiddleware("pengambilan:read"), handler.GetPengambilanBarangBaku)
+	r.POST("/pengambilanBarangBaku", middleware.PermissionMiddleware("pengambilan:create"), handler.AddPengambilanBarangBaku)
+	r.PUT("/pengambilanBarangBaku/:id", middleware.PermissionMiddleware("pengambilan:update"), handler.UpdatePengambilanBarangBaku)
+	r.DELETE("/pengambilanBarangBaku/:id", middleware.PermissionMiddleware("pengambilan:delete"), handler.DeletePengambilanBarangBaku)
 
-	manageGroup := r.Group("/auth")
-	manageGroup.Use(middleware.RoleBasedAuth([]string{"BarangManagement"}))
-	{
-		manageGroup.GET("/barangProduksi", handler.ListBarangProduksi)
-		manageGroup.GET("/barangProduksi/:id", handler.GetBarangProduksiByID)
-		manageGroup.POST("/barangProduksi", handler.AddBarangProduksi)
-		manageGroup.PUT("/barangProduksi/:id", handler.UpdateBarangProduksi)
-		manageGroup.DELETE("/barangProduksi/:id", handler.DeleteBarangProduksi)
-
-		manageGroup.GET("/gudang", handler.ListGudang)
-		manageGroup.GET("/gudang/:id", handler.GetGudangByID)
-		manageGroup.POST("/gudang", handler.AddGudang)
-		manageGroup.PUT("/gudang/:id", handler.UpdateGudang)
-		manageGroup.DELETE("/gudang/:id", handler.DeleteGudang)
-
-		manageGroup.POST("/barangMentah", handler.AddMentah)
-		manageGroup.GET("/barangMentah", handler.ListMentah)
-		manageGroup.PUT("/barangMentah/:id", handler.UpdateMentah)
-		manageGroup.DELETE("/barangMentah/:id", handler.DeleteMentah)
-	}
-
-	RPGroup := r.Group("/auth")
-	RPGroup.Use(middleware.RoleBasedAuth([]string{"RencanaProduksi"}))
-	{
-		RPGroup.GET("/rencanaProduksi", handler.ListRencanaProduksi)
-		RPGroup.GET("/rencanaProduksi/:id", handler.GetRencanaProduksiByID)
-		RPGroup.POST("/rencanaProduksi", handler.AddRencanaProduksi)
-		RPGroup.PUT("/rencanaProduksi/:id", handler.UpdateRencanaProduksi)
-		RPGroup.DELETE("/rencanaProduksi/:id", handler.DeleteRencanaProduksi)
-		RPGroup.GET("/jadwalProduksi", handler.ListRencanaProduksi)
-	}
-
-	PRGroup := r.Group("/auth")
-	PRGroup.Use(middleware.RoleBasedAuth([]string{"PerintahKerja"}))
-	{
-		PRGroup.POST("/perintahKerja", handler.AddPerintahKerja)
-		PRGroup.GET("/perintahKerja", handler.ListPerintahKerja)
-		PRGroup.PUT("/perintahKerja/:id", handler.UpdatePerintahKerja)
-		PRGroup.POST("/perintahKerja/:id/upload-document", handler.UploadDocumentForPerintahKerja)
-		PRGroup.GET("/perintahKerja/:id/download-document", handler.DownloadDocument)
-		PRGroup.PUT("/updatePengerjaan/:id", handler.UpdateProsesPengerjaan)
-	}
-
-	HPRGroup := r.Group("/auth")
-	HPRGroup.Use(middleware.RoleBasedAuth([]string{"HapusPerintahKerja"}))
-	{
-		HPRGroup.DELETE("/perintahKerja/:id", handler.DeletePerintahKerja)
-	}
-
-	PBKGroup := r.Group("/auth")
-	PBKGroup.Use(middleware.RoleBasedAuth([]string{"PengambilanBarangBaku"}))
-	{
-		PBKGroup.POST("/pengambilanBarangBaku", handler.AddPengambilanBarangBaku)
-		PBKGroup.GET("/pengambilanBarangBaku", handler.GetPengambilanBarangBaku)
-		PBKGroup.PUT("/pengambilanBarangBaku/:id", handler.UpdatePengambilanBarangBaku)
-		PBKGroup.DELETE("/pengambilanBarangBaku/:id", handler.DeletePengambilanBarangBaku)
-	}
-
-	PBJGroup := r.Group("/auth")
-	PBJGroup.Use(middleware.RoleBasedAuth([]string{"PengambilanBarangJadi"}))
-	{
-
-	}
-
-	// Run server on port 8080
+	// Run server
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"

@@ -8,8 +8,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RoleBasedAuth(allowedRoles []string) gin.HandlerFunc {
+// PermissionMiddleware checks if user has specific permission
+func PermissionMiddleware(requiredPermission string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Extract token from Authorization header
 		tokenStr := c.GetHeader("Authorization")
 		if tokenStr == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Missing token"})
@@ -27,24 +29,65 @@ func RoleBasedAuth(allowedRoles []string) gin.HandlerFunc {
 			return
 		}
 
-		// Check role authorization
-		authorized := false
-		for _, role := range allowedRoles {
-			if claims.Role == role {
-				authorized = true
-				break
-			}
-		}
-		if !authorized {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
+		// Check if user has the required permission
+		// Assuming you have permissions stored in claims or you fetch them based on role
+		hasPermission := checkUserPermission(claims.Role, requiredPermission)
+
+		if !hasPermission {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Insufficient permissions"})
 			c.Abort()
 			return
 		}
 
-		// Store user info in context for downstream handlers
+		// Store user info in context
 		c.Set("username", claims.Username)
 		c.Set("user_role", claims.Role)
 
-		c.Next() // Continue to next handler
+		c.Next()
 	}
+}
+
+// checkUserPermission checks if a role has specific permission
+func checkUserPermission(userRole, requiredPermission string) bool {
+	// Define role-permission mapping
+	rolePermissions := map[string][]string{
+		"SuperAdmin": {
+			"users:create", "users:read", "users:update", "users:delete",
+			"barang:create", "barang:read", "barang:update", "barang:delete",
+			"gudang:create", "gudang:read", "gudang:update", "gudang:delete",
+			"mentah:create", "mentah:read", "mentah:update", "mentah:delete",
+			"rencana:create", "rencana:read", "rencana:update", "rencana:delete", "jadwal:read",
+			"perintah:create", "perintah:read", "perintah:update", "perintah:delete",
+			"pengambilan:create", "pengambilan:read", "pengambilan:update", "pengambilan:delete",
+		},
+		"BarangManagement": {
+			"barang:create", "barang:read", "barang:update", "barang:delete",
+			"gudang:create", "gudang:read", "gudang:update", "gudang:delete",
+			"mentah:create", "mentah:read", "mentah:update", "mentah:delete",
+		},
+		"RencanaProduksi": {
+			"rencana:create", "rencana:read", "rencana:update", "rencana:delete", "jadwal:read",
+		},
+		"PerintahKerja": {
+			"perintah:create", "perintah:read", "perintah:update",
+		},
+		"HapusPerintahKerja": {
+			"perintah:delete",
+		},
+		"PengambilanBarangBaku": {
+			"pengambilan:create", "pengambilan:read", "pengambilan:update", "pengambilan:delete",
+		},
+	}
+
+	permissions, exists := rolePermissions[userRole]
+	if !exists {
+		return false
+	}
+
+	for _, permission := range permissions {
+		if permission == requiredPermission {
+			return true
+		}
+	}
+	return false
 }
