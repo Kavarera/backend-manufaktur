@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"manufacture_API/db"
 	"manufacture_API/model"
+	"manufacture_API/utils"
 	"net/http"
 
 	"strings"
@@ -28,6 +29,13 @@ func UpdateProsesPengerjaan(c *gin.Context) {
 	argPos := 1
 
 	if pk.Status != "" {
+		if !utils.IsValidStatus(pk.Status) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status":  "Error",
+				"message": "Status must be one of: Dijadwalkan, Dalam Proses, atau Selesai",
+			})
+			return
+		}
 		setClauses = append(setClauses, fmt.Sprintf(`"status"=$%d`, argPos))
 		values = append(values, pk.Status)
 		argPos++

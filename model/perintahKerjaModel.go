@@ -1,21 +1,31 @@
 package model
 
 import (
+	"database/sql"
 	"database/sql/driver"
 	"time"
 )
 
 type PerintahKerja struct {
-	ID             string     `json:"id"`
-	TanggalRilis   *time.Time `json:"tanggalRilis"`
-	TanggalProgres *time.Time `json:"tanggalProgres"`
-	TanggalSelesai *time.Time `json:"tanggalSelesai"`
-	Status         string     `json:"status"`
-	Hasil          float64    `json:"hasil"`
-	Customer       *string    `json:"customer"`
-	Keterangan     string     `json:"keterangan"`
-	DocumentURL    *string    `json:"documentUrl,omitempty"`
-	DocumentNama   *string    `json:"documentNama,omitempty"`
+	ID                      string       `json:"id"`
+	TanggalRilis            string       `json:"tanggalRilis"`
+	TanggalProgres          string       `json:"tanggalProgres"`
+	TanggalSelesai          string       `json:"tanggalSelesai"`
+	Status                  string       `json:"status"`
+	Hasil                   float64      `json:"hasil"`
+	Customer                *string      `json:"customer"`
+	Keterangan              string       `json:"keterangan"`
+	DocumentURL             *string      `json:"documentUrl,omitempty"`
+	DocumentNama            *string      `json:"documentNama,omitempty"`
+	TanggalRilisFormatted   string       `json:"tanggalRilisFormatted,omitempty"`
+	TanggalProgresFormatted string       `json:"tanggalProgresFormatted,omitempty"`
+	TanggalSelesaiFormatted string       `json:"tanggalSelesaiFormatted,omitempty"`
+	TanggalRilisTime        *time.Time   `json:"-"` // This will not be part of the response JSON
+	TanggalProgresTime      *time.Time   `json:"-"` // This will not be part of the response JSON
+	TanggalSelesaiTime      *time.Time   `json:"-"`
+	TanggalRilisTime2       sql.NullTime `json:"-"` // This will not be part of the response JSON
+	TanggalProgresTime2     sql.NullTime `json:"-"` // This will not be part of the response JSON
+	TanggalSelesaiTime2     sql.NullTime `json:"-"`
 }
 
 // For file upload request

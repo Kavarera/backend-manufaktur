@@ -18,28 +18,15 @@ func main() {
 	// Create Gin router with default middleware (logger and recovery)
 	r := gin.Default()
 
-	r.GET("/users", handler.AllUserList)
-	r.GET("/users/:username", handler.UserList)
-	r.DELETE("/users/:username", handler.UserDelete)
-
 	// Public routes
 	r.POST("/login", handler.Login)
+	r.GET("/jadwalProduksi", handler.ListRencanaProduksi)
+	r.POST("/rencanaProduksi", handler.AddRencanaProduksi)
+	r.GET("/rencanaProduksi", handler.ListRencanaProduksi)
+	r.PUT("/rencanaProduksi/:id", handler.UpdateRencanaProduksi)
+	r.DELETE("/rencanaProduksi/:id", handler.DeleteRencanaProduksi)
 
-	r.POST("/barangMentah", handler.AddMentah)
-	r.GET("/barangMentah", handler.ListMentah)
-	r.PUT("/barangMentah/:id", handler.UpdateMentah)
-	r.DELETE("/barangMentah/:id", handler.DeleteMentah)
-
-	r.POST("/perintahKerja", handler.AddPerintahKerja)
-	r.GET("/perintahKerja", handler.ListPerintahKerja)
-	r.PUT("/perintahKerja/:id", handler.UpdatePerintahKerja)
-	r.DELETE("/perintahKerja/:id", handler.DeletePerintahKerja)
-	r.POST("/perintahKerja/:id/upload-document", handler.UploadDocumentForPerintahKerja)
-	r.GET("/perintahKerja/:id/download-document", handler.DownloadDocument)
-
-	r.PUT("/updatePengerjaan/:id", handler.UpdateProsesPengerjaan)
-
-	authGroup := r.Group("/auth")
+	authGroup := r.Group("/admin")
 	authGroup.Use(middleware.RoleBasedAuth([]string{"SuperAdmin"}))
 	{
 		authGroup.POST("/register", handler.Register)
@@ -69,6 +56,7 @@ func main() {
 		authGroup.POST("/rencanaProduksi", handler.AddRencanaProduksi)
 		authGroup.PUT("/rencanaProduksi/:id", handler.UpdateRencanaProduksi)
 		authGroup.DELETE("/rencanaProduksi/:id", handler.DeleteRencanaProduksi)
+		authGroup.GET("/jadwalProduksi", handler.ListRencanaProduksi)
 
 		authGroup.POST("/perintahKerja", handler.AddPerintahKerja)
 		authGroup.GET("/perintahKerja", handler.ListPerintahKerja)
@@ -77,6 +65,11 @@ func main() {
 		authGroup.GET("/perintahKerja/:id/download-document", handler.DownloadDocument)
 		authGroup.PUT("/updatePengerjaan/:id", handler.UpdateProsesPengerjaan)
 		authGroup.DELETE("/perintahKerja/:id", handler.DeletePerintahKerja)
+
+		authGroup.POST("/pengambilanBarangBaku", handler.AddPengambilanBarangBaku)
+		authGroup.GET("/pengambilanBarangBaku", handler.GetPengambilanBarangBaku)
+		authGroup.PUT("/pengambilanBarangBaku/:id", handler.UpdatePengambilanBarangBaku)
+		authGroup.DELETE("/pengambilanBarangBaku/:id", handler.DeletePengambilanBarangBaku)
 	}
 
 	manageGroup := r.Group("/auth")
@@ -108,10 +101,11 @@ func main() {
 		RPGroup.POST("/rencanaProduksi", handler.AddRencanaProduksi)
 		RPGroup.PUT("/rencanaProduksi/:id", handler.UpdateRencanaProduksi)
 		RPGroup.DELETE("/rencanaProduksi/:id", handler.DeleteRencanaProduksi)
+		RPGroup.GET("/jadwalProduksi", handler.ListRencanaProduksi)
 	}
 
 	PRGroup := r.Group("/auth")
-	PRGroup.Use(middleware.RoleBasedAuth([]string{"PrintahKerja"}))
+	PRGroup.Use(middleware.RoleBasedAuth([]string{"PerintahKerja"}))
 	{
 		PRGroup.POST("/perintahKerja", handler.AddPerintahKerja)
 		PRGroup.GET("/perintahKerja", handler.ListPerintahKerja)
@@ -122,9 +116,24 @@ func main() {
 	}
 
 	HPRGroup := r.Group("/auth")
-	HPRGroup.Use(middleware.RoleBasedAuth([]string{"PrintahKerja"}))
+	HPRGroup.Use(middleware.RoleBasedAuth([]string{"HapusPerintahKerja"}))
 	{
-		PRGroup.DELETE("/perintahKerja/:id", handler.DeletePerintahKerja)
+		HPRGroup.DELETE("/perintahKerja/:id", handler.DeletePerintahKerja)
+	}
+
+	PBKGroup := r.Group("/auth")
+	PBKGroup.Use(middleware.RoleBasedAuth([]string{"PengambilanBarangBaku"}))
+	{
+		PBKGroup.POST("/pengambilanBarangBaku", handler.AddPengambilanBarangBaku)
+		PBKGroup.GET("/pengambilanBarangBaku", handler.GetPengambilanBarangBaku)
+		PBKGroup.PUT("/pengambilanBarangBaku/:id", handler.UpdatePengambilanBarangBaku)
+		PBKGroup.DELETE("/pengambilanBarangBaku/:id", handler.DeletePengambilanBarangBaku)
+	}
+
+	PBJGroup := r.Group("/auth")
+	PBJGroup.Use(middleware.RoleBasedAuth([]string{"PengambilanBarangJadi"}))
+	{
+
 	}
 
 	// Run server on port 8080

@@ -7,18 +7,49 @@ import (
 	"manufacture_API/model"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
+
+// Standardized error response
+type ErrorResponse struct {
+	Status  string `json:"status"`
+	Message string `json:"message"`
+}
+
+// Standardized success response
+type SuccessResponse struct {
+	Status  string      `json:"status"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
+}
+
+func sendErrorResponse(c *gin.Context, statusCode int, message string) {
+	c.JSON(statusCode, ErrorResponse{
+		Status:  "Error",
+		Message: message,
+	})
+}
+
+func sendSuccessResponse(c *gin.Context, statusCode int, message string, data interface{}) {
+	response := SuccessResponse{
+		Status:  "OK",
+		Message: message,
+	}
+	if data != nil {
+		response.Data = data
+	}
+	c.JSON(statusCode, response)
+}
 
 func ListRencanaProduksi(c *gin.Context) {
 	query := `SELECT "id", "id_barang_produksi", "tanggal_mulai", "tanggal_selesai" FROM "rencanaProduksi" ORDER BY "id"`
 
 	rows, err := db.GetDB().Query(query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to fetch rencana produksi"})
+		fmt.Printf("Error fetching rencana produksi: %v\n", err)
+		sendErrorResponse(c, http.StatusInternalServerError, "Failed to fetch rencana produksi")
 		return
 	}
 	defer rows.Close()
@@ -28,21 +59,31 @@ func ListRencanaProduksi(c *gin.Context) {
 		var rp model.RencanaProduksi
 		err := rows.Scan(&rp.ID, &rp.BarangProduksiID, &rp.TanggalMulai, &rp.TanggalSelesai)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to parse rencana produksi"})
+			fmt.Printf("Error scanning rencana produksi: %v\n", err)
+			sendErrorResponse(c, http.StatusInternalServerError, "Failed to parse rencana produksi")
 			return
 		}
 		list = append(list, rp)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status":  "OK",
-		"message": "Berhasil",
-		"data":    list,
-	})
+	// Check for errors after iteration
+	if err = rows.Err(); err != nil {
+		fmt.Printf("Error during rows iteration: %v\n", err)
+		sendErrorResponse(c, http.StatusInternalServerError, "Failed to fetch rencana produksi")
+		return
+	}
+
+	sendSuccessResponse(c, http.StatusOK, "Berhasil", list)
 }
 
 func GetRencanaProduksiByID(c *gin.Context) {
 	id := c.Param("id")
+
+	// Validate UUID format
+	if _, err := uuid.Parse(id); err != nil {
+		sendErrorResponse(c, http.StatusBadRequest, "Invalid ID format")
+		return
+	}
 
 	query := `SELECT "id", "id_barang_produksi", "tanggal_mulai", "tanggal_selesai" FROM "rencanaProduksi" WHERE "id"=$1`
 	row := db.GetDB().QueryRow(query, id)
@@ -50,100 +91,106 @@ func GetRencanaProduksiByID(c *gin.Context) {
 	var rp model.RencanaProduksi
 	err := row.Scan(&rp.ID, &rp.BarangProduksiID, &rp.TanggalMulai, &rp.TanggalSelesai)
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"status": "Error", "message": "Rencana produksi not found"})
+		sendErrorResponse(c, http.StatusNotFound, "Rencana produksi not found")
 		return
 	} else if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to fetch rencana produksi"})
+		fmt.Printf("Error fetching rencana produksi: %v\n", err)
+		sendErrorResponse(c, http.StatusInternalServerError, "Failed to fetch rencana produksi")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status":  "OK",
-		"message": "Berhasil",
-		"data":    rp,
-	})
+	sendSuccessResponse(c, http.StatusOK, "Berhasil", rp)
 }
 
 func AddRencanaProduksi(c *gin.Context) {
-	var payload model.RencanaProduksiAdd
-
-	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "Error", "message": "Invalid payload"})
+	var input model.RencanaProduksi
+	if err := c.ShouldBindJSON(&input); err != nil {
+		fmt.Printf("Error binding JSON: %v\n", err)
+		sendErrorResponse(c, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
-	startStr := fmt.Sprintf("%sT%s", payload.TanggalMulai, payload.WaktuMulai)
-	tanggalMulai, err := time.Parse(time.RFC3339, startStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "Error", "message": "Invalid tanggalMulai or waktuMulai"})
+	// Generate UUID for the id
+	input.ID = uuid.New().String()
+
+	// Convert CustomDate to time.Time before inserting into database
+	tanggalMulai := input.TanggalMulai.ToTime()
+	tanggalSelesai := input.TanggalSelesai.ToTime()
+
+	// Validate dates (optional business logic)
+	if tanggalSelesai.Before(tanggalMulai) {
+		sendErrorResponse(c, http.StatusBadRequest, "Tanggal selesai cannot be before tanggal mulai")
 		return
 	}
 
-	endStr := fmt.Sprintf("%sT%s", payload.TanggalSelesai, payload.WaktuSelesai)
-	tanggalSelesai, err := time.Parse(time.RFC3339, endStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "Error", "message": "Invalid tanggalSelesai or waktuSelesai"})
-		return
-	}
-
-	// Generate UUID
-	id := uuid.New().String()
-
+	// Insert rencanaProduksi
 	query := `
-	INSERT INTO "rencanaProduksi" ("id", "id_barang_produksi", "tanggal_mulai", "tanggal_selesai")
-	VALUES ($1, $2, $3, $4)
+		INSERT INTO "rencanaProduksi" (id, id_barang_produksi, tanggal_mulai, tanggal_selesai)
+		VALUES ($1, $2, $3, $4)
 	`
 
-	_, err = db.GetDB().Exec(query, id, payload.BarangProduksiID, tanggalMulai, tanggalSelesai)
+	_, err := db.GetDB().Exec(query, input.ID, input.BarangProduksiID, tanggalMulai, tanggalSelesai)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to create rencana produksi"})
+		fmt.Printf("Error inserting rencana produksi: %v\n", err)
+		sendErrorResponse(c, http.StatusInternalServerError, "Failed to add rencana produksi")
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"status":  "OK",
-		"message": "Berhasil",
-		"data": gin.H{
-			"id":               id,
-			"barangProduksiId": payload.BarangProduksiID,
-			"tanggalMulai":     tanggalMulai,
-			"tanggalSelesai":   tanggalSelesai,
-		},
-	})
+	sendSuccessResponse(c, http.StatusCreated, "Rencana Produksi created successfully", input)
 }
 
 func UpdateRencanaProduksi(c *gin.Context) {
 	id := c.Param("id")
 
-	var payload model.RencanaProduksi
-	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "Error", "message": "Invalid request payload"})
+	// Validate UUID format
+	if _, err := uuid.Parse(id); err != nil {
+		sendErrorResponse(c, http.StatusBadRequest, "Invalid ID format")
 		return
 	}
 
-	var setClauses []string
-	var args []interface{}
-	argPos := 1
+	var payload model.RencanaProduksiUpdate
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		fmt.Printf("Error binding JSON: %v\n", err)
+		sendErrorResponse(c, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	updates := make(map[string]interface{})
 
 	if payload.BarangProduksiID != nil {
-		setClauses = append(setClauses, fmt.Sprintf(`"id_barang_produksi"=$%d`, argPos))
-		args = append(args, *payload.BarangProduksiID)
-		argPos++
-	}
-	if payload.TanggalMulai != nil {
-		setClauses = append(setClauses, fmt.Sprintf(`"tanggal_mulai"=$%d`, argPos))
-		args = append(args, *payload.TanggalMulai)
-		argPos++
-	}
-	if payload.TanggalSelesai != nil {
-		setClauses = append(setClauses, fmt.Sprintf(`"tanggal_selesai"=$%d`, argPos))
-		args = append(args, *payload.TanggalSelesai)
-		argPos++
+		updates["id_barang_produksi"] = *payload.BarangProduksiID
 	}
 
-	if len(setClauses) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "Error", "message": "No fields to update"})
+	if payload.TanggalMulai != nil {
+		updates["tanggal_mulai"] = payload.TanggalMulai.ToTime()
+	}
+
+	if payload.TanggalSelesai != nil {
+		updates["tanggal_selesai"] = payload.TanggalSelesai.ToTime()
+	}
+
+	if len(updates) == 0 {
+		sendErrorResponse(c, http.StatusBadRequest, "No fields to update")
 		return
+	}
+
+	// Business logic validation (optional)
+	if payload.TanggalMulai != nil && payload.TanggalSelesai != nil {
+		if payload.TanggalSelesai.ToTime().Before(payload.TanggalMulai.ToTime()) {
+			sendErrorResponse(c, http.StatusBadRequest, "Tanggal selesai cannot be before tanggal mulai")
+			return
+		}
+	}
+
+	// Build dynamic SQL
+	setClauses := make([]string, 0, len(updates))
+	args := make([]interface{}, 0, len(updates)+1)
+	argPos := 1
+
+	for column, value := range updates {
+		setClauses = append(setClauses, fmt.Sprintf(`"%s"=$%d`, column, argPos))
+		args = append(args, value)
+		argPos++
 	}
 
 	args = append(args, id)
@@ -151,41 +198,43 @@ func UpdateRencanaProduksi(c *gin.Context) {
 
 	res, err := db.GetDB().Exec(sql, args...)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to update rencana produksi"})
+		fmt.Printf("Error updating rencana produksi: %v\n", err)
+		sendErrorResponse(c, http.StatusInternalServerError, "Failed to update rencana produksi")
 		return
 	}
 
 	rowsAffected, _ := res.RowsAffected()
 	if rowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"status": "Error", "message": "Rencana produksi not found"})
+		sendErrorResponse(c, http.StatusNotFound, "Rencana produksi not found")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status":  "OK",
-		"message": "Rencana produksi updated successfully",
-	})
+	sendSuccessResponse(c, http.StatusOK, "Rencana produksi updated successfully", nil)
 }
 
 func DeleteRencanaProduksi(c *gin.Context) {
 	id := c.Param("id")
 
+	// Validate UUID format
+	if _, err := uuid.Parse(id); err != nil {
+		sendErrorResponse(c, http.StatusBadRequest, "Invalid ID format")
+		return
+	}
+
 	query := `DELETE FROM "rencanaProduksi" WHERE "id"=$1`
 
 	res, err := db.GetDB().Exec(query, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to delete rencana produksi"})
+		fmt.Printf("Error deleting rencana produksi: %v\n", err)
+		sendErrorResponse(c, http.StatusInternalServerError, "Failed to delete rencana produksi")
 		return
 	}
 
 	rowsAffected, _ := res.RowsAffected()
 	if rowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"status": "Error", "message": "Rencana produksi not found"})
+		sendErrorResponse(c, http.StatusNotFound, "Rencana produksi not found")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status":  "OK",
-		"message": "Rencana produksi deleted successfully",
-	})
+	sendSuccessResponse(c, http.StatusOK, "Rencana produksi deleted successfully", nil)
 }
