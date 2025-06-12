@@ -19,6 +19,8 @@ func main() {
 
 	// Public routes (no authentication)
 	r.POST("/login", handler.Login)
+	r.GET("/history/:id", handler.GetPerintahKerjaDetailsByID)
+
 	r.GET("/barangSelesai", middleware.PermissionMiddleware("selesai:read"), handler.GetPenyelesaianBarangJadi)
 	r.POST("/barangSelesai", middleware.PermissionMiddleware("selesai:create"), handler.AddPenyelesaianBarangJadi)
 	r.PUT("/barangSelesai/:id", middleware.PermissionMiddleware("selesai:update"), handler.UpdatePenyelesaianBarangJadi)
