@@ -2,20 +2,51 @@ package handler
 
 import (
 	"database/sql"
-	"fmt"
 	"manufacture_API/db"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
+// Role constants (same as in middleware)
+const (
+	RoleBarangManagement      = 1 << 0 // 1
+	RoleRencanaProduksi       = 1 << 1 // 2
+	RolePerintahKerja         = 1 << 2 // 4
+	RoleHapusPerintahKerja    = 1 << 3 // 8
+	RolePengambilanBarangBaku = 1 << 4 // 16
+	RolePengambilanBarangJadi = 1 << 5 // 32
+	RoleSuperAdmin            = 63     // All roles combined
+)
+
+// Helper function to parse roles from frontend checkboxes
+func parseRolesFromRequest(roles []string) int {
+	roleMap := map[string]int{
+		"BarangManagement":      RoleBarangManagement,
+		"RencanaProduksi":       RoleRencanaProduksi,
+		"PerintahKerja":         RolePerintahKerja,
+		"HapusPerintahKerja":    RoleHapusPerintahKerja,
+		"PengambilanBarangBaku": RolePengambilanBarangBaku,
+		"PengambilanBarangJadi": RolePengambilanBarangJadi,
+		"SuperAdmin":            RoleSuperAdmin,
+	}
+
+	totalRoles := 0
+	for _, roleName := range roles {
+		if roleValue, exists := roleMap[roleName]; exists {
+			totalRoles |= roleValue
+		}
+	}
+
+	return totalRoles
+}
+
 func Register(c *gin.Context) {
 	var user struct {
-		Username   string `json:"username"`
-		Password   string `json:"password"`
-		IdHakAkses string `json:"hak_akses"`
+		Username string   `json:"username"`
+		Password string   `json:"password"`
+		Roles    []string `json:"roles"` // Changed to array of role names
 	}
 
 	if err := c.ShouldBindJSON(&user); err != nil {
@@ -26,38 +57,32 @@ func Register(c *gin.Context) {
 		return
 	}
 
+	// Validate input
+	if user.Username == "" || user.Password == "" || len(user.Roles) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "Error",
+			"message": "Username, password, and roles are required",
+		})
+		return
+	}
+
 	// Generate UUID for user ID
 	userID := uuid.New().String()
 
-	roleID, err := strconv.Atoi(user.IdHakAkses)
-	if err != nil {
+	// Parse roles to bitwise integer
+	userRoles := parseRolesFromRequest(user.Roles)
+	if userRoles == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status":  "Error",
-			"message": "Invalid role ID format",
+			"message": "Invalid roles provided",
 		})
 		return
 	}
 
-	var roleName string
-	query := `SELECT "hak_akses" FROM "hakAkses" WHERE "id" = $1`
-	err = db.GetDB().QueryRow(query, roleID).Scan(&roleName)
-	if err == sql.ErrNoRows {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  "Error",
-			"message": "Invalid role ID: Role does not exist",
-		})
-		return
-	} else if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  "Error",
-			"message": "Failed to validate role",
-		})
-		return
-	}
-
-	query = `SELECT "username" FROM "userAccount" WHERE "username" = $1`
+	// Check if username already exists
+	query := `SELECT "username" FROM "userAccount" WHERE "username" = $1`
 	var existingUsername string
-	err = db.GetDB().QueryRow(query, user.Username).Scan(&existingUsername)
+	err := db.GetDB().QueryRow(query, user.Username).Scan(&existingUsername)
 	if err == nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status":  "Error",
@@ -74,15 +99,13 @@ func Register(c *gin.Context) {
 
 	hashedPassword := hashPassword(user.Password)
 
+	// Updated query to store roles as integer
 	query = `
 		INSERT INTO "userAccount" ("id", "username", "password", "hak_akses")
 		VALUES ($1, $2, $3, $4)
 	`
-	_, err = db.GetDB().Exec(query, userID, user.Username, hashedPassword, roleID)
+	_, err = db.GetDB().Exec(query, userID, user.Username, hashedPassword, userRoles)
 	if err != nil {
-		fmt.Printf("Database insert error: %v\n", err)
-		fmt.Printf("UserID: %s, Username: %s, RoleID: %d\n", userID, user.Username, roleID)
-
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status":  "Error",
 			"message": "Failed to register user",
@@ -93,11 +116,12 @@ func Register(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "OK",
-		"message": "Berhasil",
+		"message": "User registered successfully",
 		"data": gin.H{
-			"userId":   userID,
-			"username": user.Username,
-			"roleId":   roleID,
+			"userId":    userID,
+			"username":  user.Username,
+			"roles":     user.Roles,
+			"roleValue": userRoles,
 		},
 	})
 }

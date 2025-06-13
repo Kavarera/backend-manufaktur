@@ -19,18 +19,20 @@ func main() {
 
 	// Public routes (no authentication)
 	r.POST("/login", handler.Login)
-	r.GET("/history/:id", middleware.PermissionMiddleware("history:read"), handler.GetPerintahKerjaDetailsByID)
-
-	r.GET("/barangSelesai", middleware.PermissionMiddleware("selesai:read"), handler.GetPenyelesaianBarangJadi)
-	r.POST("/barangSelesai", middleware.PermissionMiddleware("selesai:create"), handler.AddPenyelesaianBarangJadi)
-	r.PUT("/barangSelesai/:id", middleware.PermissionMiddleware("selesai:update"), handler.UpdatePenyelesaianBarangJadi)
-	r.DELETE("/barangSelesai/:id", middleware.PermissionMiddleware("selesai:delete"), handler.DeletePenyelesaianBarangJadi)
+	r.POST("/test/register", handler.Register)
 
 	// User Management Routes
 	r.POST("/register", middleware.PermissionMiddleware("users:create"), handler.Register)
 	r.GET("/users", middleware.PermissionMiddleware("users:read"), handler.AllUserList)
 	r.GET("/users/:username", middleware.PermissionMiddleware("users:read"), handler.UserList)
+	r.GET("/users/:username/roles", middleware.PermissionMiddleware("users:read"), handler.GetUserRoles)
+	r.PUT("/users/:username/roles", middleware.PermissionMiddleware("users:update"), handler.UpdateUserRoles)
 	r.DELETE("/users/:username", middleware.PermissionMiddleware("users:delete"), handler.UserDelete)
+
+	r.GET("/barangSelesai", middleware.PermissionMiddleware("selesai:read"), handler.GetPenyelesaianBarangJadi)
+	r.POST("/barangSelesai", middleware.PermissionMiddleware("selesai:create"), handler.AddPenyelesaianBarangJadi)
+	r.PUT("/barangSelesai/:id", middleware.PermissionMiddleware("selesai:update"), handler.UpdatePenyelesaianBarangJadi)
+	r.DELETE("/barangSelesai/:id", middleware.PermissionMiddleware("selesai:delete"), handler.DeletePenyelesaianBarangJadi)
 
 	// Barang Produksi Routes
 	r.GET("/barangProduksi", middleware.PermissionMiddleware("barang:read"), handler.ListBarangProduksi)
@@ -74,6 +76,8 @@ func main() {
 	r.POST("/pengambilanBarangBaku", middleware.PermissionMiddleware("pengambilan:create"), handler.AddPengambilanBarangBaku)
 	r.PUT("/pengambilanBarangBaku/:id", middleware.PermissionMiddleware("pengambilan:update"), handler.UpdatePengambilanBarangBaku)
 	r.DELETE("/pengambilanBarangBaku/:id", middleware.PermissionMiddleware("pengambilan:delete"), handler.DeletePengambilanBarangBaku)
+
+	r.GET("/history/:id", middleware.PermissionMiddleware("history:read"), handler.GetPerintahKerjaDetailsByID)
 
 	// Run server
 	port := os.Getenv("PORT")
