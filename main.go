@@ -20,6 +20,13 @@ func main() {
 	// Public routes (no authentication)
 	r.POST("/login", handler.Login)
 
+	r.GET("/test/rencanaProduksi", handler.ListRencanaProduksi)
+	r.GET("/test/rencanaProduksi/:id", handler.GetRencanaProduksiByID)
+	r.POST("/test/rencanaProduksi", handler.AddRencanaProduksi)
+	r.PUT("/test/rencanaProduksi/:id", handler.UpdateRencanaProduksi)
+	r.DELETE("/test/rencanaProduksi/:id", handler.DeleteRencanaProduksi)
+	r.GET("/test/jadwalProduksi", handler.ListRencanaProduksi)
+
 	// User Management Routes
 	r.POST("/register", middleware.PermissionMiddleware("users:create"), handler.Register)
 	r.GET("/users", middleware.PermissionMiddleware("users:read"), handler.AllUserList)

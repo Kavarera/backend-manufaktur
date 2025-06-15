@@ -10,6 +10,8 @@ type RencanaProduksiUpdate struct {
 	BarangProduksiID *int        `json:"barangProduksiId,omitempty"`
 	TanggalMulai     *CustomDate `json:"tanggalMulai,omitempty"`
 	TanggalSelesai   *CustomDate `json:"tanggalSelesai,omitempty"`
+	NamaProduksi     *string     `json:"namaProduksi"`
+	Quantity         *int        `json:"quantity"`
 }
 
 // RencanaProduksi represents a production plan record in the database.
@@ -18,6 +20,8 @@ type RencanaProduksi struct {
 	BarangProduksiID int        `json:"barangProduksiId"`
 	TanggalMulai     CustomDate `json:"tanggalMulai"`
 	TanggalSelesai   CustomDate `json:"tanggalSelesai,omitempty"`
+	NamaProduksi     string     `json:"namaProduksi"`
+	Quantity         int        `json:"quantity"`
 }
 
 const DateFormat = "2006-01-02"

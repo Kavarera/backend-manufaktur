@@ -44,7 +44,7 @@ func sendSuccessResponse(c *gin.Context, statusCode int, message string, data in
 }
 
 func ListRencanaProduksi(c *gin.Context) {
-	query := `SELECT "id", "id_barang_produksi", "tanggal_mulai", "tanggal_selesai" FROM "rencanaProduksi" ORDER BY "id"`
+	query := `SELECT "id", "id_barang_produksi", "tanggal_mulai", "tanggal_selesai", "namaProduksi", "quantity" FROM "rencanaProduksi" ORDER BY "id"`
 
 	rows, err := db.GetDB().Query(query)
 	if err != nil {
@@ -57,7 +57,7 @@ func ListRencanaProduksi(c *gin.Context) {
 	var list []model.RencanaProduksi
 	for rows.Next() {
 		var rp model.RencanaProduksi
-		err := rows.Scan(&rp.ID, &rp.BarangProduksiID, &rp.TanggalMulai, &rp.TanggalSelesai)
+		err := rows.Scan(&rp.ID, &rp.BarangProduksiID, &rp.TanggalMulai, &rp.TanggalSelesai, &rp.NamaProduksi, &rp.Quantity)
 		if err != nil {
 			fmt.Printf("Error scanning rencana produksi: %v\n", err)
 			sendErrorResponse(c, http.StatusInternalServerError, "Failed to parse rencana produksi")
@@ -85,11 +85,11 @@ func GetRencanaProduksiByID(c *gin.Context) {
 		return
 	}
 
-	query := `SELECT "id", "id_barang_produksi", "tanggal_mulai", "tanggal_selesai" FROM "rencanaProduksi" WHERE "id"=$1`
+	query := `SELECT "id", "id_barang_produksi", "tanggal_mulai", "tanggal_selesai", "namaProduksi", "quantity" FROM "rencanaProduksi" WHERE "id"=$1`
 	row := db.GetDB().QueryRow(query, id)
 
 	var rp model.RencanaProduksi
-	err := row.Scan(&rp.ID, &rp.BarangProduksiID, &rp.TanggalMulai, &rp.TanggalSelesai)
+	err := row.Scan(&rp.ID, &rp.BarangProduksiID, &rp.TanggalMulai, &rp.TanggalSelesai, &rp.NamaProduksi, &rp.Quantity)
 	if err == sql.ErrNoRows {
 		sendErrorResponse(c, http.StatusNotFound, "Rencana produksi not found")
 		return
@@ -125,11 +125,11 @@ func AddRencanaProduksi(c *gin.Context) {
 
 	// Insert rencanaProduksi
 	query := `
-		INSERT INTO "rencanaProduksi" (id, id_barang_produksi, tanggal_mulai, tanggal_selesai)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO "rencanaProduksi" ("id", "id_barang_produksi", "tanggal_mulai", "tanggal_selesai", "namaProduksi", "quantity")
+		VALUES ($1, $2, $3, $4, $5, $6)
 	`
 
-	_, err := db.GetDB().Exec(query, input.ID, input.BarangProduksiID, tanggalMulai, tanggalSelesai)
+	_, err := db.GetDB().Exec(query, input.ID, input.BarangProduksiID, tanggalMulai, tanggalSelesai, input.NamaProduksi, input.Quantity)
 	if err != nil {
 		fmt.Printf("Error inserting rencana produksi: %v\n", err)
 		sendErrorResponse(c, http.StatusInternalServerError, "Failed to add rencana produksi")
@@ -169,12 +169,19 @@ func UpdateRencanaProduksi(c *gin.Context) {
 		updates["tanggal_selesai"] = payload.TanggalSelesai.ToTime()
 	}
 
+	if payload.NamaProduksi != nil {
+		updates["namaProduksi"] = *payload.NamaProduksi
+	}
+
+	if payload.Quantity != nil {
+		updates["quantity"] = *payload.Quantity
+	}
+
 	if len(updates) == 0 {
 		sendErrorResponse(c, http.StatusBadRequest, "No fields to update")
 		return
 	}
 
-	// Business logic validation (optional)
 	if payload.TanggalMulai != nil && payload.TanggalSelesai != nil {
 		if payload.TanggalSelesai.ToTime().Before(payload.TanggalMulai.ToTime()) {
 			sendErrorResponse(c, http.StatusBadRequest, "Tanggal selesai cannot be before tanggal mulai")
