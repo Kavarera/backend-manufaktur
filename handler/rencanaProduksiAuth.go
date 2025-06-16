@@ -88,8 +88,10 @@ func GetRencanaProduksiByID(c *gin.Context) {
 	query := `SELECT "id", "id_barang_produksi", "tanggal_mulai", "tanggal_selesai", "namaProduksi", "quantity" FROM "rencanaProduksi" WHERE "id"=$1`
 	row := db.GetDB().QueryRow(query, id)
 
+	var lists []model.RencanaProduksi
 	var rp model.RencanaProduksi
 	err := row.Scan(&rp.ID, &rp.BarangProduksiID, &rp.TanggalMulai, &rp.TanggalSelesai, &rp.NamaProduksi, &rp.Quantity)
+	lists = append(lists, rp)
 	if err == sql.ErrNoRows {
 		sendErrorResponse(c, http.StatusNotFound, "Rencana produksi not found")
 		return
@@ -99,7 +101,7 @@ func GetRencanaProduksiByID(c *gin.Context) {
 		return
 	}
 
-	sendSuccessResponse(c, http.StatusOK, "Berhasil", rp)
+	sendSuccessResponse(c, http.StatusOK, "Berhasil", lists)
 }
 
 func AddRencanaProduksi(c *gin.Context) {
