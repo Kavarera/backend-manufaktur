@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"manufacture_API/db"
 	"manufacture_API/model"
 	"net/http"
@@ -14,7 +15,7 @@ func GetPerintahKerjaDetailsByID(c *gin.Context) {
 
 	// SQL query to join perintahKerja with related tables
 	query := `
-		SELECT 
+SELECT 
 			pk.id,
 			pk.tanggal_rilis,
 			pk.tanggal_progres,
@@ -25,6 +26,8 @@ func GetPerintahKerjaDetailsByID(c *gin.Context) {
 			pk.keterangan,
 			pk.document_url,
 			pk.document_nama,
+			pk.id_rencana_produksi,
+			rp."namaProduksi",
 			pbd.id AS penyelesaian_id, 
 			pbd.nama AS penyelesaian_nama,
 			pbd.jumlah AS penyelesaian_jumlah,
@@ -38,6 +41,8 @@ func GetPerintahKerjaDetailsByID(c *gin.Context) {
 			bm.stok AS barang_mentah_stok
 		FROM 
 			"perintahKerja" pk
+		LEFT JOIN
+			"rencanaProduksi" rp ON rp.id = pk.id_rencana_produksi
 		LEFT JOIN 
 			"penyelesaianBarangJadi" pbd ON pbd.id_perintah_kerja = pk.id
 		LEFT JOIN 
@@ -66,15 +71,18 @@ func GetPerintahKerjaDetailsByID(c *gin.Context) {
 		var pbd model.PenyelesaianBarangJadi
 		var pbb model.PengambilanBarangBaku
 		var bm model.BarangMentah
+		var pr model.RencanaProduksi
 
 		err := rows.Scan(
 			&pk.ID, &pk.TanggalRilis, &pk.TanggalProgres, &pk.TanggalSelesai, &pk.Status,
-			&pk.Hasil, &pk.Customer, &pk.Keterangan, &pk.DocumentURL, &pk.DocumentNama,
+			&pk.Hasil, &pk.Customer, &pk.Keterangan, &pk.DocumentURL, &pk.DocumentNama, &pk.IdRencanaProduksi,
+			&pr.NamaProduksi,
 			&pbd.ID, &pbd.Nama, &pbd.Jumlah, &pbd.TanggalPenyelesaian,
 			&pbb.ID, &pbb.Kebutuhan,
 			&bm.ID, &bm.Nama, &bm.KodeBarang, &bm.HargaStandar, &bm.Stok,
 		)
 		if err != nil {
+			fmt.Println(err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse data"})
 			return
 		}
