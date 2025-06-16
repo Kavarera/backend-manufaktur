@@ -27,6 +27,14 @@ func main() {
 	r.DELETE("/test/rencanaProduksi/:id", handler.DeleteRencanaProduksi)
 	r.GET("/test/jadwalProduksi", handler.ListRencanaProduksi)
 
+	r.GET("/test/perintahKerja", handler.ListPerintahKerja)
+	r.POST("/test/perintahKerja", handler.AddPerintahKerja)
+	r.PUT("/test/perintahKerja/:id", handler.UpdatePerintahKerja)
+	r.DELETE("/test/perintahKerja/:id", handler.DeletePerintahKerja)
+	r.POST("/test/perintahKerja/:id/upload-document", handler.UploadDocumentForPerintahKerja)
+	r.GET("/test/perintahKerja/:id/download-document", handler.DownloadDocument)
+	r.PUT("/test/updatePengerjaan/:id", handler.UpdateProsesPengerjaan)
+
 	// User Management Routes
 	r.POST("/register", middleware.PermissionMiddleware("users:create"), handler.Register)
 	r.GET("/users", middleware.PermissionMiddleware("users:read"), handler.AllUserList)

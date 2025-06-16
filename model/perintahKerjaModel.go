@@ -20,6 +20,8 @@ type PerintahKerja struct {
 	TanggalRilisFormatted   string       `json:"tanggalRilisFormatted,omitempty"`
 	TanggalProgresFormatted string       `json:"tanggalProgresFormatted,omitempty"`
 	TanggalSelesaiFormatted string       `json:"tanggalSelesaiFormatted,omitempty"`
+	IdRencanaProduksi       string       `json:"idRencanaProduksi"`
+	NamaProduksi            string       `json:"namaProduksi"`
 	TanggalRilisTime        *time.Time   `json:"-"` // This will not be part of the response JSON
 	TanggalProgresTime      *time.Time   `json:"-"` // This will not be part of the response JSON
 	TanggalSelesaiTime      *time.Time   `json:"-"`

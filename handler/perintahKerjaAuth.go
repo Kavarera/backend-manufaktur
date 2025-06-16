@@ -18,9 +18,10 @@ import (
 // ListPerintahKerja returns all records
 func ListPerintahKerja(c *gin.Context) {
 	query := `
-		SELECT "id", "tanggal_rilis", "tanggal_progres", "tanggal_selesai", 
-		       "status", "hasil", "customer", "keterangan", "document_url", "document_nama"
-		FROM "perintahKerja" 
+		SELECT pk."id", pk."tanggal_rilis", pk."tanggal_progres", pk."tanggal_selesai", 
+		       pk."status", pk."hasil", pk."customer", pk."keterangan", pk."document_url", pk."document_nama", pk."id_rencana_produksi", rp."namaProduksi"
+		FROM "perintahKerja" pk
+		JOIN "rencanaProduksi" rp ON rp.id = pk.id_rencana_produksi
 		ORDER BY "id"
 	`
 
@@ -40,7 +41,7 @@ func ListPerintahKerja(c *gin.Context) {
 		err := rows.Scan(
 			&data.ID, &data.TanggalRilisTime2, &data.TanggalProgresTime2, &data.TanggalSelesaiTime2,
 			&data.Status, &data.Hasil, &data.Customer, &data.Keterangan,
-			&data.DocumentURL, &data.DocumentNama,
+			&data.DocumentURL, &data.DocumentNama, &data.IdRencanaProduksi, &data.NamaProduksi,
 		)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
@@ -121,8 +122,8 @@ func AddPerintahKerja(c *gin.Context) {
 	// Proceed with database insertion
 	query := `
 		INSERT INTO "perintahKerja" 
-		("id", "tanggal_rilis", "tanggal_progres", "tanggal_selesai", "status", "hasil", "customer", "keterangan", "document_url", "document_nama")
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+		("id", "tanggal_rilis", "tanggal_progres", "tanggal_selesai", "status", "hasil", "customer", "keterangan", "document_url", "document_nama", "id_rencana_produksi")
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
 		RETURNING "id"
 	`
 
@@ -130,7 +131,7 @@ func AddPerintahKerja(c *gin.Context) {
 	err = db.GetDB().QueryRow(query,
 		input.ID, input.TanggalRilisTime, input.TanggalProgresTime, input.TanggalSelesaiTime,
 		input.Status, input.Hasil, input.Customer, input.Keterangan,
-		input.DocumentURL, input.DocumentNama,
+		input.DocumentURL, input.DocumentNama, input.IdRencanaProduksi,
 	).Scan(&returnedID)
 
 	if err != nil {
@@ -157,14 +158,14 @@ func UpdatePerintahKerja(c *gin.Context) {
 	var existingRecord model.PerintahKerja
 	err := db.GetDB().QueryRow(`
 		SELECT "id", "tanggal_rilis", "tanggal_progres", "tanggal_selesai", 
-		       "status", "hasil", "customer", "keterangan", "document_url", "document_nama"
+		       "status", "hasil", "customer", "keterangan", "document_url", "document_nama", "id_rencana_produksi"
 		FROM "perintahKerja"
 		WHERE "id" = $1
 	`, id).Scan(
 		&existingRecord.ID, &existingRecord.TanggalRilisTime, &existingRecord.TanggalProgresTime,
 		&existingRecord.TanggalSelesaiTime, &existingRecord.Status, &existingRecord.Hasil,
 		&existingRecord.Customer, &existingRecord.Keterangan, &existingRecord.DocumentURL,
-		&existingRecord.DocumentNama,
+		&existingRecord.DocumentNama, &existingRecord.IdRencanaProduksi,
 	)
 
 	if err == sql.ErrNoRows {
@@ -269,6 +270,11 @@ func UpdatePerintahKerja(c *gin.Context) {
 	if pk.Keterangan != "" {
 		setClauses = append(setClauses, fmt.Sprintf(`"keterangan"=$%d`, argPos))
 		updateValues = append(updateValues, pk.Keterangan)
+		argPos++
+	}
+	if pk.IdRencanaProduksi != "" {
+		setClauses = append(setClauses, fmt.Sprintf(`"id_rencana_produksi"=$%d`, argPos))
+		updateValues = append(updateValues, pk.IdRencanaProduksi)
 		argPos++
 	}
 
