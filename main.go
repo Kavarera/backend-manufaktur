@@ -20,20 +20,11 @@ func main() {
 	// Public routes (no authentication)
 	r.POST("/login", handler.Login)
 
-	r.GET("/test/rencanaProduksi", handler.ListRencanaProduksi)
-	r.GET("/test/rencanaProduksi/:id", handler.GetRencanaProduksiByID)
-	r.POST("/test/rencanaProduksi", handler.AddRencanaProduksi)
-	r.PUT("/test/rencanaProduksi/:id", handler.UpdateRencanaProduksi)
-	r.DELETE("/test/rencanaProduksi/:id", handler.DeleteRencanaProduksi)
-	r.GET("/test/jadwalProduksi", handler.ListRencanaProduksi)
-
-	r.GET("/test/perintahKerja", handler.ListPerintahKerja)
-	r.POST("/test/perintahKerja", handler.AddPerintahKerja)
-	r.PUT("/test/perintahKerja/:id", handler.UpdatePerintahKerja)
-	r.DELETE("/test/perintahKerja/:id", handler.DeletePerintahKerja)
-	r.POST("/test/perintahKerja/:id/upload-document", handler.UploadDocumentForPerintahKerja)
-	r.GET("/test/perintahKerja/:id/download-document", handler.DownloadDocument)
-	r.PUT("/test/updatePengerjaan/:id", handler.UpdateProsesPengerjaan)
+	r.GET("/test/formulaProduksi", handler.ListFormulaProduksi)
+	r.GET("/test/formulaProduksi/:id", handler.GetFormulaProduksiByID)
+	r.POST("/test/formulaProduksi", handler.AddFormulaProduksi)
+	r.PUT("/test/formulaProduksi/:id", handler.UpdateFormulaProduksi)
+	r.DELETE("/test/formulaProduksi/:id", handler.DeleteFormulaProduksi)
 
 	// User Management Routes
 	r.POST("/register", middleware.PermissionMiddleware("users:create"), handler.Register)
@@ -92,6 +83,12 @@ func main() {
 	r.DELETE("/pengambilanBarangBaku/:id", middleware.PermissionMiddleware("pengambilan:delete"), handler.DeletePengambilanBarangBaku)
 
 	r.GET("/history/:id", middleware.PermissionMiddleware("history:read"), handler.GetPerintahKerjaDetailsByID)
+
+	r.GET("/formulaProduksi", middleware.PermissionMiddleware("formula:read"), handler.ListFormulaProduksi)
+	r.GET("/formulaProduksi/:id", middleware.PermissionMiddleware("formula:read"), handler.GetFormulaProduksiByID)
+	r.POST("/formulaProduksi", middleware.PermissionMiddleware("formula:create"), handler.AddFormulaProduksi)
+	r.PUT("/formulaProduksi/:id", middleware.PermissionMiddleware("formula:update"), handler.UpdateFormulaProduksi)
+	r.DELETE("/formulaProduksi/:id", middleware.PermissionMiddleware("formula:delete"), handler.DeleteFormulaProduksi)
 
 	// Run server
 	port := os.Getenv("PORT")

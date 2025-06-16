@@ -73,6 +73,11 @@ const (
 	PermUsersRead   = "users:read"
 	PermUsersUpdate = "users:update"
 	PermUsersDelete = "users:delete"
+
+	PermFormulaCreate = "formula:create"
+	PermFormulaRead   = "formula:read"
+	PermFormulaUpdate = "formula:update"
+	PermFormulaDelete = "formula:delete"
 )
 
 // Helper functions for role management
@@ -121,6 +126,7 @@ func checkUserPermission(userRoles int, requiredPermission string) bool {
 			PermBarangCreate, PermBarangRead, PermBarangUpdate, PermBarangDelete,
 			PermGudangCreate, PermGudangRead, PermGudangUpdate, PermGudangDelete,
 			PermMentahCreate, PermMentahRead, PermMentahUpdate, PermMentahDelete,
+			PermFormulaCreate, PermFormulaRead, PermFormulaUpdate, PermFormulaDelete,
 		},
 		RoleRencanaProduksi: {
 			PermRencanaCreate, PermRencanaRead, PermRencanaUpdate, PermRencanaDelete, PermJadwalRead,
