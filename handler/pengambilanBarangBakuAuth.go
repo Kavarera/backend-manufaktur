@@ -5,57 +5,59 @@ import (
 	"manufacture_API/db"
 	"manufacture_API/model"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 // AddPengambilanBarangBaku creates a new pengambilan barang baku and updates related tables
 func AddPengambilanBarangBaku(c *gin.Context) {
-	var input model.PengambilanBarangBaku
+	var input struct {
+		IDPerintahKerja string                        `json:"idPerintahKerja"`
+		BarangBaku      []model.PengambilanBarangBaku `json:"barangBaku"`
+	}
+
+	// Parse the input JSON
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
 		return
 	}
 
-	// Insert pengambilanBarangBaku
-	query := `
-		INSERT INTO "pengambilanBarangBaku" (id_perintah_kerja, id_barang_mentah, kebutuhan)
-		VALUES ($1, $2, $3)
-		RETURNING id
-	`
-	var id int
-	err := db.GetDB().QueryRow(query, input.IDPerintahKerja, input.IDBarangMentah, input.Kebutuhan).Scan(&id)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add pengambilan barang baku"})
-		return
+	// Get current timestamp for tanggal_waktu
+	tanggalWaktu := time.Now()
+
+	// Loop through each barangBaku in the payload and insert them
+	for _, barang := range input.BarangBaku {
+		// Insert pengambilanBarangBaku
+		query := `
+			INSERT INTO "pengambilanBarangBaku" (id_perintah_kerja, id_barang_mentah, kebutuhan, tanggal_waktu)
+			VALUES ($1, $2, $3, $4)
+			RETURNING id
+		`
+		var id int
+		err := db.GetDB().QueryRow(query, input.IDPerintahKerja, barang.IDBarangMentah, barang.Kebutuhan, tanggalWaktu).Scan(&id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add pengambilan barang baku"})
+			return
+		}
+
+		// Update stok in barangMentah table
+		queryBarangMentah := `
+			UPDATE "barangMentah"
+			SET stok = stok - $1
+			WHERE id = $2
+		`
+		_, err = db.GetDB().Exec(queryBarangMentah, barang.Kebutuhan, barang.IDBarangMentah)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update stok in barangMentah"})
+			return
+		}
 	}
 
-	// Update hasil in perintahKerja table based on kebutuhan
-	queryPerintahKerja := `
-		UPDATE "perintahKerja"
-		SET hasil = $1
-		WHERE id = $2
-	`
-	_, err = db.GetDB().Exec(queryPerintahKerja, input.Kebutuhan, input.IDPerintahKerja)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update hasil in perintahKerja"})
-		return
-	}
-
-	// Update stok in barangMentah table
-	queryBarangMentah := `
-		UPDATE "barangMentah"
-		SET stok = stok - $1
-		WHERE id = $2
-	`
-	_, err = db.GetDB().Exec(queryBarangMentah, input.Kebutuhan, input.IDBarangMentah)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update stok in barangMentah"})
-		return
-	}
-
+	// Respond with success
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Pengambilan Barang Baku added successfully",
+		"status":  "OK",
 		"data":    input,
 	})
 }
@@ -68,6 +70,7 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 			pbb.id_perintah_kerja,
 			pbb.id_barang_mentah,
 			pbb.kebutuhan,
+			pbb.tanggal_waktu,
 			pk.tanggal_rilis,
 			pk.tanggal_progres,
 			pk.tanggal_selesai,
@@ -101,6 +104,7 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 			&item.IDPerintahKerja,
 			&item.IDBarangMentah,
 			&item.Kebutuhan,
+			&item.TanggalWaktu,
 			&item.TanggalRilis,
 			&item.TanggalProgres,
 			&item.TanggalSelesai,
@@ -110,28 +114,34 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 			&item.HargaStandarBarangMentah,
 			&item.StokBarangMentah,
 		); err != nil {
+			fmt.Println(err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse pengambilan barang baku"})
 			return
 		}
 		result = append(result, item)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": result})
+	c.JSON(http.StatusOK, gin.H{"data": result, "message": "Berhasil", "status": "OK"})
 }
 
 // UpdatePengambilanBarangBaku updates pengambilanBarangBaku and adjusts related fields
 func UpdatePengambilanBarangBaku(c *gin.Context) {
 	id := c.Param("id")
 
-	var input model.PengambilanBarangBaku
+	// Define the input structure with multiple barangBaku objects
+	var input struct {
+		BarangBaku []model.PengambilanBarangBaku `json:"barangBaku"`
+	}
+
+	// Parse the input JSON
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
 		return
 	}
 
 	// Get current values
-	var oldKebutuhan float64
 	var idPerintahKerja string
+	var oldKebutuhan float64
 	var idBarangMentah int
 	query := `SELECT id_perintah_kerja, id_barang_mentah, kebutuhan FROM "pengambilanBarangBaku" WHERE id = $1`
 	err := db.GetDB().QueryRow(query, id).Scan(&idPerintahKerja, &idBarangMentah, &oldKebutuhan)
@@ -140,43 +150,34 @@ func UpdatePengambilanBarangBaku(c *gin.Context) {
 		return
 	}
 
-	// Update pengambilanBarangBaku record
-	queryUpdate := `
-		UPDATE "pengambilanBarangBaku"
-		SET id_barang_mentah = $1, kebutuhan = $2
-		WHERE id = $3
-	`
-	_, err = db.GetDB().Exec(queryUpdate, input.IDBarangMentah, input.Kebutuhan, id)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update pengambilan barang baku"})
-		return
+	// Loop through each barangBaku in the input to update
+	for _, barang := range input.BarangBaku {
+		// Update the pengambilanBarangBaku record
+		queryUpdate := `
+			UPDATE "pengambilanBarangBaku"
+			SET id_barang_mentah = $1, kebutuhan = $2, tanggal_waktu = $3
+			WHERE id = $4
+		`
+		_, err := db.GetDB().Exec(queryUpdate, barang.IDBarangMentah, barang.Kebutuhan, time.Now(), id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update pengambilan barang baku"})
+			return
+		}
+
+		// Adjust "stok" in barangMentah
+		queryBarangMentah := `
+			UPDATE "barangMentah"
+			SET stok = stok - $1 + $2
+			WHERE id = $3
+		`
+		_, err = db.GetDB().Exec(queryBarangMentah, barang.Kebutuhan, oldKebutuhan, idBarangMentah)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update stok in barangMentah"})
+			return
+		}
 	}
 
-	// Adjust "hasil" in perintahKerja
-	queryPerintahKerja := `
-		UPDATE "perintahKerja"
-		SET hasil = $1 
-		WHERE id = $2
-	`
-	_, err = db.GetDB().Exec(queryPerintahKerja, input.Kebutuhan, idPerintahKerja)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update hasil in perintahKerja"})
-		return
-	}
-
-	// Adjust "stok" in barangMentah
-	queryBarangMentah := `
-		UPDATE "barangMentah"
-		SET stok = stok - $1 + $2
-		WHERE id = $3
-	`
-	_, err = db.GetDB().Exec(queryBarangMentah, input.Kebutuhan, oldKebutuhan, idBarangMentah)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update stok in barangMentah"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Pengambilan Barang Baku updated successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Pengambilan Barang Baku updated successfully", "status": "OK"})
 }
 
 // DeletePengambilanBarangBaku deletes a specific pengambilanBarangBaku and reverts related fields
@@ -226,5 +227,5 @@ func DeletePengambilanBarangBaku(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Pengambilan Barang Baku deleted successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Pengambilan Barang Baku deleted successfully", "status": "OK"})
 }
