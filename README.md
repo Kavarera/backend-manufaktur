@@ -1,4 +1,4 @@
-# API Manufaktur
+# API Manufaktur  
 
 This project is a RESTful API built using the [Gin](https://github.com/gin-gonic/gin) framework in Golang.
 
