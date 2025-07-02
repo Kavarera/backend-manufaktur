@@ -1,0 +1,25 @@
+name: Deploy Backend Manufaktur
+
+on:
+  push:
+    branches:
+      - stable  # atau ganti dengan branch yang kamu mau trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@v4
+
+      - name: Tambah private key ke ssh-agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY }}
+
+      - name: Jalankan deploy ke server
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
+            'sudo -u tayo /bin/bash /home/admin-manufaktur/manufaktur/deploy-manufaktur-be.sh'
