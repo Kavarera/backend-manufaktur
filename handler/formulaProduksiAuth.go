@@ -12,10 +12,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ListFormulaProduksi lists all formulaProduksi records
 func ListFormulaProduksi(c *gin.Context) {
 	query := `
-		SELECT id, barang_jadi, kuantitas, satuan, bahan_baku
+		SELECT id, barang_jadi, kuantitas, satuan, bahan_baku, satuan_turunan
 		FROM "formulaProduksi"
 	`
 
@@ -29,7 +28,15 @@ func ListFormulaProduksi(c *gin.Context) {
 	var result []model.FormulaProduksi
 	for rows.Next() {
 		var item model.FormulaProduksi
-		if err := rows.Scan(&item.ID, &item.BarangJadi, &item.Kuantitas, &item.Satuan, &item.BahanBaku); err != nil {
+		err := rows.Scan(
+			&item.ID,
+			&item.BarangJadi,
+			&item.Kuantitas,
+			&item.Satuan,
+			&item.BahanBaku,
+			&item.SatuanTurunan,
+		)
+		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse formula produksi"})
 			return
 		}
@@ -39,10 +46,10 @@ func ListFormulaProduksi(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "OK",
 		"message": "Berhasil",
-		"data":    result})
+		"data":    result,
+	})
 }
 
-// GetFormulaProduksiByID retrieves a specific formulaProduksi by its ID
 func GetFormulaProduksiByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -52,14 +59,14 @@ func GetFormulaProduksiByID(c *gin.Context) {
 	}
 
 	query := `
-		SELECT id, barang_jadi, kuantitas, satuan, bahan_baku
+		SELECT id, barang_jadi, kuantitas, satuan, bahan_baku, satuan_turunan
 		FROM "formulaProduksi"
 		WHERE id = $1
 	`
 
 	row := db.GetDB().QueryRow(query, id)
 	var item model.FormulaProduksi
-	err = row.Scan(&item.ID, &item.BarangJadi, &item.Kuantitas, &item.Satuan, &item.BahanBaku)
+	err = row.Scan(&item.ID, &item.BarangJadi, &item.Kuantitas, &item.Satuan, &item.BahanBaku, &item.SatuanTurunan)
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Formula Produksi not found"})
 		return
@@ -71,32 +78,64 @@ func GetFormulaProduksiByID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "OK",
 		"message": "Berhasil",
-		"data":    item})
+		"data":    item,
+	})
 }
 
-// AddFormulaProduksi adds a new formulaProduksi record
+// AddFormulaProduksi adds one or more new formulaProduksi records
 func AddFormulaProduksi(c *gin.Context) {
-	var input model.FormulaProduksi
-	if err := c.ShouldBindJSON(&input); err != nil {
+	var inputs []model.FormulaProduksi
+	if err := c.ShouldBindJSON(&inputs); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
 		return
 	}
 
 	query := `
-		INSERT INTO "formulaProduksi" (barang_jadi, kuantitas, satuan, bahan_baku)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO "formulaProduksi" 
+		(barang_jadi, kuantitas, satuan, bahan_baku, satuan_turunan)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id
 	`
-	err := db.GetDB().QueryRow(query, input.BarangJadi, input.Kuantitas, input.Satuan, input.BahanBaku).Scan(&input.ID)
+
+	dbConn := db.GetDB()
+	tx, err := dbConn.Begin()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add formula produksi"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start transaction"})
+		return
+	}
+
+	var added []model.FormulaProduksi
+
+	for i, input := range inputs {
+		var id int
+		err := tx.QueryRow(
+			query,
+			input.BarangJadi,
+			input.Kuantitas,
+			sql.NullFloat64{Float64: input.Satuan, Valid: input.Satuan != 0},
+			input.BahanBaku,
+			sql.NullFloat64{Float64: input.SatuanTurunan, Valid: input.SatuanTurunan != 0},
+		).Scan(&id)
+
+		if err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed at item %d: %v", i+1, err)})
+			return
+		}
+		input.ID = id
+		added = append(added, input)
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
 		"status":  "OK",
 		"message": "Formula Produksi Added Successfully",
-		"data":    input})
+		"data":    added,
+	})
 }
 
 // UpdateFormulaProduksi dynamically updates formulaProduksi based on the provided fields
@@ -110,17 +149,14 @@ func UpdateFormulaProduksi(c *gin.Context) {
 
 	var input model.FormulaProduksi
 	if err := c.ShouldBindJSON(&input); err != nil {
-		fmt.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
 		return
 	}
 
-	// Prepare the dynamic update query
 	var updates []string
 	var values []interface{}
 	argPos := 1
 
-	// Add fields only if they are provided
 	if input.BarangJadi != "" {
 		updates = append(updates, fmt.Sprintf("barang_jadi = $%d", argPos))
 		values = append(values, input.BarangJadi)
@@ -141,31 +177,31 @@ func UpdateFormulaProduksi(c *gin.Context) {
 		values = append(values, input.BahanBaku)
 		argPos++
 	}
+	if input.SatuanTurunan != 0 {
+		updates = append(updates, fmt.Sprintf("satuan_turunan = $%d", argPos))
+		values = append(values, input.SatuanTurunan)
+		argPos++
+	}
 
-	// If no fields are provided, return an error
 	if len(updates) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No fields to update"})
 		return
 	}
 
-	// Build the dynamic SQL query
 	query := fmt.Sprintf(`
 		UPDATE "formulaProduksi"
 		SET %s
 		WHERE id = $%d
 	`, strings.Join(updates, ", "), argPos)
 
-	// Add the ID to the end of the values array
 	values = append(values, id)
 
-	// Execute the update query
 	_, err = db.GetDB().Exec(query, values...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update formula produksi"})
 		return
 	}
 
-	// Return the success message
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "OK",
 		"message": "Formula Produksi Updated Successfully",
