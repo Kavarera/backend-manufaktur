@@ -28,18 +28,34 @@ func ListFormulaProduksi(c *gin.Context) {
 	var result []model.FormulaProduksi
 	for rows.Next() {
 		var item model.FormulaProduksi
+		var satuan sql.NullFloat64
+		var satuanTurunan sql.NullFloat64
+
 		err := rows.Scan(
 			&item.ID,
 			&item.BarangJadi,
 			&item.Kuantitas,
-			&item.Satuan,
+			&satuan,
 			&item.BahanBaku,
-			&item.SatuanTurunan,
+			&satuanTurunan,
 		)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse formula produksi"})
 			return
 		}
+
+		if satuan.Valid {
+			item.Satuan = satuan.Float64
+		} else {
+			item.Satuan = 0
+		}
+
+		if satuanTurunan.Valid {
+			item.SatuanTurunan = satuanTurunan.Float64
+		} else {
+			item.SatuanTurunan = 0
+		}
+
 		result = append(result, item)
 	}
 
@@ -65,14 +81,33 @@ func GetFormulaProduksiByID(c *gin.Context) {
 	`
 
 	row := db.GetDB().QueryRow(query, id)
+
 	var item model.FormulaProduksi
-	err = row.Scan(&item.ID, &item.BarangJadi, &item.Kuantitas, &item.Satuan, &item.BahanBaku, &item.SatuanTurunan)
+	var satuan sql.NullFloat64
+	var satuanTurunan sql.NullFloat64
+
+	err = row.Scan(
+		&item.ID,
+		&item.BarangJadi,
+		&item.Kuantitas,
+		&satuan,
+		&item.BahanBaku,
+		&satuanTurunan,
+	)
+
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Formula Produksi not found"})
 		return
 	} else if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch formula produksi"})
 		return
+	}
+
+	if satuan.Valid {
+		item.Satuan = satuan.Float64
+	}
+	if satuanTurunan.Valid {
+		item.SatuanTurunan = satuanTurunan.Float64
 	}
 
 	c.JSON(http.StatusOK, gin.H{

@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"manufacture_API/db"
 	"manufacture_API/model"
 	"net/http"
@@ -62,7 +61,6 @@ func AddPengambilanBarangBaku(c *gin.Context) {
 	})
 }
 
-// GetPengambilanBarangBaku lists all pengambilanBarangBaku for a given perintahKerja ID
 func GetPengambilanBarangBaku(c *gin.Context) {
 	query := `
 		SELECT 
@@ -85,43 +83,99 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 			"perintahKerja" pk ON pk.id = pbb.id_perintah_kerja
 		JOIN 
 			"barangMentah" bm ON bm.id = pbb.id_barang_mentah
+		ORDER BY 
+			pbb.id_perintah_kerja, pbb.id
 	`
 
 	rows, err := db.GetDB().Query(query)
 	if err != nil {
-		fmt.Println("error:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch pengambilan barang baku"})
 		return
 	}
 	defer rows.Close()
 
-	var result []model.PengambilanBarangBaku
-	for rows.Next() {
-		var item model.PengambilanBarangBaku
-		// Scan the data into the result object
-		if err := rows.Scan(
-			&item.ID,
-			&item.IDPerintahKerja,
-			&item.IDBarangMentah,
-			&item.Kebutuhan,
-			&item.TanggalWaktu,
-			&item.TanggalRilis,
-			&item.TanggalProgres,
-			&item.TanggalSelesai,
-			&item.StatusPerintahKerja,
-			&item.NamaBarangMentah,
-			&item.KodeBarangMentah,
-			&item.HargaStandarBarangMentah,
-			&item.StokBarangMentah,
-		); err != nil {
-			fmt.Println(err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse pengambilan barang baku"})
-			return
-		}
-		result = append(result, item)
+	// BarangMentah structure (a subset of your full model)
+	type BarangMentah struct {
+		ID                       int       `json:"id"`
+		IDBarangMentah           int       `json:"idBarangMentah"`
+		NamaBarangMentah         string    `json:"namaBarangMentah"`
+		KodeBarangMentah         string    `json:"kodeBarangMentah"`
+		HargaStandarBarangMentah float64   `json:"hargaStandarBarangMentah"`
+		StokBarangMentah         float64   `json:"stokBarangMentah"`
+		Kebutuhan                float64   `json:"kebutuhan"`
+		TanggalWaktu             time.Time `json:"tanggalWaktu"`
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": result, "message": "Berhasil", "status": "OK"})
+	// Grouped structure per Perintah Kerja
+	type GroupedPengambilan struct {
+		IDPerintahKerja     string         `json:"idPerintahKerja"`
+		TanggalRilis        time.Time      `json:"tanggalRilis"`
+		TanggalProgres      *time.Time     `json:"tanggalProgres"`
+		TanggalSelesai      *time.Time     `json:"tanggalSelesai"`
+		StatusPerintahKerja string         `json:"statusPerintahKerja"`
+		BarangMentah        []BarangMentah `json:"barangMentah"`
+	}
+
+	grouped := make(map[string]*GroupedPengambilan)
+
+	for rows.Next() {
+		var record model.PengambilanBarangBaku
+		err := rows.Scan(
+			&record.ID,
+			&record.IDPerintahKerja,
+			&record.IDBarangMentah,
+			&record.Kebutuhan,
+			&record.TanggalWaktu,
+			&record.TanggalRilis,
+			&record.TanggalProgres,
+			&record.TanggalSelesai,
+			&record.StatusPerintahKerja,
+			&record.NamaBarangMentah,
+			&record.KodeBarangMentah,
+			&record.HargaStandarBarangMentah,
+			&record.StokBarangMentah,
+		)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse result"})
+			return
+		}
+
+		group, exists := grouped[record.IDPerintahKerja]
+		if !exists {
+			group = &GroupedPengambilan{
+				IDPerintahKerja:     record.IDPerintahKerja,
+				TanggalRilis:        record.TanggalRilis,
+				TanggalProgres:      record.TanggalProgres,
+				TanggalSelesai:      record.TanggalSelesai,
+				StatusPerintahKerja: record.StatusPerintahKerja,
+				BarangMentah:        []BarangMentah{},
+			}
+			grouped[record.IDPerintahKerja] = group
+		}
+
+		group.BarangMentah = append(group.BarangMentah, BarangMentah{
+			ID:                       record.ID,
+			IDBarangMentah:           record.IDBarangMentah,
+			NamaBarangMentah:         record.NamaBarangMentah,
+			KodeBarangMentah:         record.KodeBarangMentah,
+			HargaStandarBarangMentah: record.HargaStandarBarangMentah,
+			StokBarangMentah:         record.StokBarangMentah,
+			Kebutuhan:                record.Kebutuhan,
+			TanggalWaktu:             record.TanggalWaktu,
+		})
+	}
+
+	// Convert map to slice
+	var response []GroupedPengambilan
+	for _, g := range grouped {
+		response = append(response, *g)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "OK",
+		"message": "Berhasil",
+		"data":    response,
+	})
 }
 
 // UpdatePengambilanBarangBaku updates pengambilanBarangBaku and adjusts related fields
