@@ -64,7 +64,6 @@ func AddPengambilanBarangBaku(c *gin.Context) {
 func GetPengambilanBarangBaku(c *gin.Context) {
 	query := `
 		SELECT 
-			pbb.id,
 			pbb.id_perintah_kerja,
 			pbb.id_barang_mentah,
 			pbb.kebutuhan,
@@ -96,7 +95,6 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 
 	// BarangMentah structure (a subset of your full model)
 	type BarangMentah struct {
-		ID                       int       `json:"id"`
 		IDBarangMentah           int       `json:"idBarangMentah"`
 		NamaBarangMentah         string    `json:"namaBarangMentah"`
 		KodeBarangMentah         string    `json:"kodeBarangMentah"`
@@ -121,7 +119,6 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 	for rows.Next() {
 		var record model.PengambilanBarangBaku
 		err := rows.Scan(
-			&record.ID,
 			&record.IDPerintahKerja,
 			&record.IDBarangMentah,
 			&record.Kebutuhan,
@@ -154,7 +151,6 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 		}
 
 		group.BarangMentah = append(group.BarangMentah, BarangMentah{
-			ID:                       record.ID,
 			IDBarangMentah:           record.IDBarangMentah,
 			NamaBarangMentah:         record.NamaBarangMentah,
 			KodeBarangMentah:         record.KodeBarangMentah,
