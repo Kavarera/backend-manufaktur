@@ -20,7 +20,11 @@ func main() {
 	// Public routes (no authentication)
 	r.POST("/login", handler.Login)
 
-	r.PUT("/test/pengambilanBarangBaku/:id", handler.UpdatePengambilanBarangBaku)
+	r.GET("/test/formulaProduksi", handler.ListFormulaProduksi)
+	r.GET("/test/formulaProduksi/:id", handler.GetFormulaProduksiByID)
+	r.POST("/test/formulaProduksi", handler.AddFormulaProduksi)
+	r.PUT("/test/formulaProduksi/:id", handler.UpdateFormulaProduksi)
+	r.DELETE("/test/formulaProduksi/:id", handler.DeleteFormulaProduksi)
 
 	// User Management Routes
 	r.POST("/register", middleware.PermissionMiddleware("users:create"), handler.Register)
@@ -80,16 +84,16 @@ func main() {
 
 	r.GET("/history/:id", middleware.PermissionMiddleware("history:read"), handler.GetPerintahKerjaDetailsByID)
 
-	r.GET("/formulaProduksi", middleware.PermissionMiddleware("formula:read"), handler.ListFormulaProduksi)
-	r.GET("/formulaProduksi/:id", middleware.PermissionMiddleware("formula:read"), handler.GetFormulaProduksiByID)
-	r.POST("/formulaProduksi", middleware.PermissionMiddleware("formula:create"), handler.AddFormulaProduksi)
-	r.PUT("/formulaProduksi/:id", middleware.PermissionMiddleware("formula:update"), handler.UpdateFormulaProduksi)
-	r.DELETE("/formulaProduksi/:id", middleware.PermissionMiddleware("formula:delete"), handler.DeleteFormulaProduksi)
+	// r.GET("/formulaProduksi", middleware.PermissionMiddleware("formula:read"), handler.ListFormulaProduksi)
+	// r.GET("/formulaProduksi/:id", middleware.PermissionMiddleware("formula:read"), handler.GetFormulaProduksiByID)
+	// r.POST("/formulaProduksi", middleware.PermissionMiddleware("formula:create"), handler.AddFormulaProduksi)
+	// r.PUT("/formulaProduksi/:id", middleware.PermissionMiddleware("formula:update"), handler.UpdateFormulaProduksi)
+	// r.DELETE("/formulaProduksi/:id", middleware.PermissionMiddleware("formula:delete"), handler.DeleteFormulaProduksi)
 
 	// Run server
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		port = "8000"
 	}
 	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("Failed to run server: %v", err)
