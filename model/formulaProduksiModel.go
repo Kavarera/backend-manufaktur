@@ -1,10 +1,11 @@
 package model
 
+import "time"
+
 type FormulaProduksi struct {
-	ID            int     `json:"id"`
-	BarangJadi    string  `json:"barangJadi"`
-	Kuantitas     float64 `json:"kuantitas"`
-	Satuan        float64 `json:"satuan"`
-	BahanBaku     string  `json:"bahanBaku"`
-	SatuanTurunan float64 `json:"satuanTurunan"`
+	ID               int       `json:"id"`
+	IDBarangProduksi int       `json:"idBarangProduksi"`
+	Kuantitas        float64   `json:"kuantitas"`
+	TanggalMulai     time.Time `json:"tanggalMulai"`
+	NamaProduksi     string    `json:"namaProduksi"`
 }

@@ -20,8 +20,6 @@ func main() {
 	// Public routes (no authentication)
 	r.POST("/login", handler.Login)
 
-	r.GET("test/formulaProduksi", handler.ListFormulaProduksi)
-
 	// User Management Routes
 	r.POST("/register", middleware.PermissionMiddleware("users:create"), handler.Register)
 	r.GET("/users", middleware.PermissionMiddleware("users:read"), handler.AllUserList)
@@ -89,7 +87,7 @@ func main() {
 	// Run server
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		port = "8000"
 	}
 	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("Failed to run server: %v", err)

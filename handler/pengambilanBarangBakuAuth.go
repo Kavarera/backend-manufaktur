@@ -64,7 +64,6 @@ func AddPengambilanBarangBaku(c *gin.Context) {
 func GetPengambilanBarangBaku(c *gin.Context) {
 	query := `
 		SELECT 
-			pbb.id,
 			pbb.id_perintah_kerja,
 			pbb.id_barang_mentah,
 			pbb.kebutuhan,
@@ -96,7 +95,6 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 
 	// BarangMentah structure (a subset of your full model)
 	type BarangMentah struct {
-		ID                       int       `json:"id"`
 		IDBarangMentah           int       `json:"idBarangMentah"`
 		NamaBarangMentah         string    `json:"namaBarangMentah"`
 		KodeBarangMentah         string    `json:"kodeBarangMentah"`
@@ -121,7 +119,6 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 	for rows.Next() {
 		var record model.PengambilanBarangBaku
 		err := rows.Scan(
-			&record.ID,
 			&record.IDPerintahKerja,
 			&record.IDBarangMentah,
 			&record.Kebutuhan,
@@ -154,7 +151,6 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 		}
 
 		group.BarangMentah = append(group.BarangMentah, BarangMentah{
-			ID:                       record.ID,
 			IDBarangMentah:           record.IDBarangMentah,
 			NamaBarangMentah:         record.NamaBarangMentah,
 			KodeBarangMentah:         record.KodeBarangMentah,
@@ -178,14 +174,11 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 	})
 }
 
-// UpdatePengambilanBarangBaku updates pengambilanBarangBaku and adjusts related fields
 func UpdatePengambilanBarangBaku(c *gin.Context) {
 	id := c.Param("id")
 
-	// Define the input structure with multiple barangBaku objects
-	var input struct {
-		BarangBaku []model.PengambilanBarangBaku `json:"barangBaku"`
-	}
+	// Define expected single input
+	var input model.PengambilanBarangBaku
 
 	// Parse the input JSON
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -193,45 +186,76 @@ func UpdatePengambilanBarangBaku(c *gin.Context) {
 		return
 	}
 
-	// Get current values
-	var idPerintahKerja string
+	dbConn := db.GetDB()
+
+	// Start a transaction
+	tx, err := dbConn.Begin()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start transaction"})
+		return
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		} else {
+			tx.Commit()
+		}
+	}()
+
+	// Fetch current values
 	var oldKebutuhan float64
-	var idBarangMentah int
-	query := `SELECT id_perintah_kerja, id_barang_mentah, kebutuhan FROM "pengambilanBarangBaku" WHERE id = $1`
-	err := db.GetDB().QueryRow(query, id).Scan(&idPerintahKerja, &idBarangMentah, &oldKebutuhan)
+	var oldIDBarangMentah int
+	query := `
+		SELECT id_barang_mentah, kebutuhan
+		FROM "pengambilanBarangBaku"
+		WHERE id = $1
+	`
+	err = tx.QueryRow(query, id).Scan(&oldIDBarangMentah, &oldKebutuhan)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch existing record"})
 		return
 	}
 
-	// Loop through each barangBaku in the input to update
-	for _, barang := range input.BarangBaku {
-		// Update the pengambilanBarangBaku record
-		queryUpdate := `
-			UPDATE "pengambilanBarangBaku"
-			SET id_barang_mentah = $1, kebutuhan = $2, tanggal_waktu = $3
-			WHERE id = $4
-		`
-		_, err := db.GetDB().Exec(queryUpdate, barang.IDBarangMentah, barang.Kebutuhan, time.Now(), id)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update pengambilan barang baku"})
-			return
-		}
-
-		// Adjust "stok" in barangMentah
-		queryBarangMentah := `
-			UPDATE "barangMentah"
-			SET stok = stok - $1 + $2
-			WHERE id = $3
-		`
-		_, err = db.GetDB().Exec(queryBarangMentah, barang.Kebutuhan, oldKebutuhan, idBarangMentah)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update stok in barangMentah"})
-			return
-		}
+	// Step 1: Update the pengambilanBarangBaku record
+	queryUpdate := `
+		UPDATE "pengambilanBarangBaku"
+		SET id_barang_mentah = $1, kebutuhan = $2, tanggal_waktu = $3
+		WHERE id = $4
+	`
+	_, err = tx.Exec(queryUpdate, input.IDBarangMentah, input.Kebutuhan, time.Now(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update pengambilan barang baku"})
+		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Pengambilan Barang Baku updated successfully", "status": "OK"})
+	// Step 2: Revert stok from old barangMentah
+	queryRevertStok := `
+		UPDATE "barangMentah"
+		SET stok = stok + $1
+		WHERE id = $2
+	`
+	_, err = tx.Exec(queryRevertStok, oldKebutuhan, oldIDBarangMentah)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to revert stok from old barangMentah"})
+		return
+	}
+
+	// Step 3: Subtract stok from new barangMentah
+	querySubtractStok := `
+		UPDATE "barangMentah"
+		SET stok = stok - $1
+		WHERE id = $2
+	`
+	_, err = tx.Exec(querySubtractStok, input.Kebutuhan, input.IDBarangMentah)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to subtract stok from new barangMentah"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Pengambilan Barang Baku updated successfully",
+		"status":  "OK",
+	})
 }
 
 // DeletePengambilanBarangBaku deletes a specific pengambilanBarangBaku and reverts related fields
