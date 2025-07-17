@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"manufacture_API/db"
 	"manufacture_API/model"
 	"net/http"
@@ -64,6 +65,7 @@ func AddPengambilanBarangBaku(c *gin.Context) {
 func GetPengambilanBarangBaku(c *gin.Context) {
 	query := `
 		SELECT 
+			pbb.id,
 			pbb.id_perintah_kerja,
 			pbb.id_barang_mentah,
 			pbb.kebutuhan,
@@ -88,6 +90,7 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 
 	rows, err := db.GetDB().Query(query)
 	if err != nil {
+		fmt.Print(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch pengambilan barang baku"})
 		return
 	}
@@ -95,6 +98,7 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 
 	// BarangMentah structure (a subset of your full model)
 	type BarangMentah struct {
+		ID                       int       `json:"idPengambilanBarangBaku"`
 		IDBarangMentah           int       `json:"idBarangMentah"`
 		NamaBarangMentah         string    `json:"namaBarangMentah"`
 		KodeBarangMentah         string    `json:"kodeBarangMentah"`
@@ -119,6 +123,7 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 	for rows.Next() {
 		var record model.PengambilanBarangBaku
 		err := rows.Scan(
+			&record.ID,
 			&record.IDPerintahKerja,
 			&record.IDBarangMentah,
 			&record.Kebutuhan,
@@ -151,6 +156,7 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 		}
 
 		group.BarangMentah = append(group.BarangMentah, BarangMentah{
+			ID:                       record.ID,
 			IDBarangMentah:           record.IDBarangMentah,
 			NamaBarangMentah:         record.NamaBarangMentah,
 			KodeBarangMentah:         record.KodeBarangMentah,
