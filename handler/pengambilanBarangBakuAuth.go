@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"manufacture_API/db"
 	"manufacture_API/model"
 	"net/http"
@@ -64,6 +65,7 @@ func AddPengambilanBarangBaku(c *gin.Context) {
 func GetPengambilanBarangBaku(c *gin.Context) {
 	query := `
 		SELECT 
+			pbb.id,
 			pbb.id_perintah_kerja,
 			pbb.id_barang_mentah,
 			pbb.kebutuhan,
@@ -88,6 +90,7 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 
 	rows, err := db.GetDB().Query(query)
 	if err != nil {
+		fmt.Print(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch pengambilan barang baku"})
 		return
 	}
@@ -106,6 +109,7 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 
 	// Grouped structure per Perintah Kerja
 	type GroupedPengambilan struct {
+		ID                  int            `json:"id"`
 		IDPerintahKerja     string         `json:"idPerintahKerja"`
 		TanggalRilis        time.Time      `json:"tanggalRilis"`
 		TanggalProgres      *time.Time     `json:"tanggalProgres"`
@@ -119,6 +123,7 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 	for rows.Next() {
 		var record model.PengambilanBarangBaku
 		err := rows.Scan(
+			&record.ID,
 			&record.IDPerintahKerja,
 			&record.IDBarangMentah,
 			&record.Kebutuhan,
@@ -140,6 +145,7 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 		group, exists := grouped[record.IDPerintahKerja]
 		if !exists {
 			group = &GroupedPengambilan{
+				ID:                  record.ID,
 				IDPerintahKerja:     record.IDPerintahKerja,
 				TanggalRilis:        record.TanggalRilis,
 				TanggalProgres:      record.TanggalProgres,
