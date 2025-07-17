@@ -98,6 +98,7 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 
 	// BarangMentah structure (a subset of your full model)
 	type BarangMentah struct {
+		ID                       int       `json:"idPengambilanBarangBaku"`
 		IDBarangMentah           int       `json:"idBarangMentah"`
 		NamaBarangMentah         string    `json:"namaBarangMentah"`
 		KodeBarangMentah         string    `json:"kodeBarangMentah"`
@@ -109,7 +110,6 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 
 	// Grouped structure per Perintah Kerja
 	type GroupedPengambilan struct {
-		ID                  int            `json:"id"`
 		IDPerintahKerja     string         `json:"idPerintahKerja"`
 		TanggalRilis        time.Time      `json:"tanggalRilis"`
 		TanggalProgres      *time.Time     `json:"tanggalProgres"`
@@ -145,7 +145,6 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 		group, exists := grouped[record.IDPerintahKerja]
 		if !exists {
 			group = &GroupedPengambilan{
-				ID:                  record.ID,
 				IDPerintahKerja:     record.IDPerintahKerja,
 				TanggalRilis:        record.TanggalRilis,
 				TanggalProgres:      record.TanggalProgres,
@@ -157,6 +156,7 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 		}
 
 		group.BarangMentah = append(group.BarangMentah, BarangMentah{
+			ID:                       record.ID,
 			IDBarangMentah:           record.IDBarangMentah,
 			NamaBarangMentah:         record.NamaBarangMentah,
 			KodeBarangMentah:         record.KodeBarangMentah,
