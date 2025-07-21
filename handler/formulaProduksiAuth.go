@@ -7,6 +7,7 @@ import (
 	"manufacture_API/model"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -123,19 +124,52 @@ func UpdateFormulaProduksi(c *gin.Context) {
 		return
 	}
 
-	var input model.FormulaProduksi
+	var input map[string]interface{}
 	if err := c.ShouldBindJSON(&input); err != nil {
-		fmt.Print(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
 		return
 	}
 
-	query := `
-		UPDATE "formulaProduksi"
-		SET id_barang_produksi = $1, kuantitas = $2, tanggal_mulai = $3, nama_produksi = $4
-		WHERE id = $5
-	`
-	_, err = db.GetDB().Exec(query, input.IDBarangProduksi, input.Kuantitas, input.TanggalMulai, input.NamaProduksi, id)
+	if len(input) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No fields to update"})
+		return
+	}
+
+	allowedFields := map[string]bool{
+		"idBarangProduksi": true,
+		"kuantitas":        true,
+		"tanggalMulai":     true,
+		"namaProduksi":     true,
+	}
+
+	setClauses := []string{}
+	args := []interface{}{}
+	argIdx := 1
+
+	for key, value := range input {
+		if !allowedFields[key] {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Field %s not allowed for update", key)})
+			return
+		}
+
+		column := map[string]string{
+			"idBarangProduksi": "id_barang_produksi",
+			"kuantitas":        "kuantitas",
+			"tanggalMulai":     "tanggal_mulai",
+			"namaProduksi":     "nama_produksi",
+		}[key]
+
+		setClauses = append(setClauses, fmt.Sprintf("%s = $%d", column, argIdx))
+		args = append(args, value)
+		argIdx++
+	}
+
+	query := fmt.Sprintf(`UPDATE "formulaProduksi" SET %s WHERE id = $%d`,
+		strings.Join(setClauses, ", "), argIdx)
+
+	args = append(args, id)
+
+	_, err = db.GetDB().Exec(query, args...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update formula produksi"})
 		return
