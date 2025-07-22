@@ -67,17 +67,24 @@ const (
 	PermSelesaiUpdate = "selesai:update"
 	PermSelesaiDelete = "selesai:delete"
 
-	// Other permissions
+	// History Permissions
 	PermHistoryRead = "history:read"
 	PermUsersCreate = "users:create"
 	PermUsersRead   = "users:read"
 	PermUsersUpdate = "users:update"
 	PermUsersDelete = "users:delete"
 
+	//Formula Permissions
 	PermFormulaCreate = "formula:create"
 	PermFormulaRead   = "formula:read"
 	PermFormulaUpdate = "formula:update"
 	PermFormulaDelete = "formula:delete"
+
+	//Barang Satuan Permissionns
+	PermSatuanCreate = "satuan:create"
+	PermSatuanRead   = "satuan:read"
+	PermSatuanUpdate = "satuan:update"
+	PermSatuanDelete = "satuan:delete"
 )
 
 // Helper functions for role management
@@ -127,6 +134,7 @@ func checkUserPermission(userRoles int, requiredPermission string) bool {
 			PermGudangCreate, PermGudangRead, PermGudangUpdate, PermGudangDelete,
 			PermMentahCreate, PermMentahRead, PermMentahUpdate, PermMentahDelete,
 			PermFormulaCreate, PermFormulaRead, PermFormulaUpdate, PermFormulaDelete,
+			PermSatuanCreate, PermSatuanRead, PermSatuanUpdate, PermSatuanDelete,
 		},
 		RoleRencanaProduksi: {
 			PermRencanaCreate, PermRencanaRead, PermRencanaUpdate, PermRencanaDelete, PermJadwalRead,
