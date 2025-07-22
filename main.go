@@ -20,11 +20,6 @@ func main() {
 	// Public routes (no authentication)
 	r.POST("/login", handler.Login)
 
-	r.GET("/test/pengambilanBarangBaku", handler.GetPengambilanBarangBaku)
-	r.POST("/test/pengambilanBarangBaku", handler.AddPengambilanBarangBaku)
-	r.PUT("/test/pengambilanBarangBaku/:id", handler.UpdatePengambilanBarangBaku)
-	r.DELETE("/test/pengambilanBarangBaku/:id", handler.DeletePengambilanBarangBaku)
-
 	// User Management Routes
 	r.POST("/register", middleware.PermissionMiddleware("users:create"), handler.Register)
 	r.GET("/users", middleware.PermissionMiddleware("users:read"), handler.AllUserList)
@@ -81,13 +76,28 @@ func main() {
 	r.PUT("/pengambilanBarangBaku/:id", middleware.PermissionMiddleware("pengambilan:update"), handler.UpdatePengambilanBarangBaku)
 	r.DELETE("/pengambilanBarangBaku/:id", middleware.PermissionMiddleware("pengambilan:delete"), handler.DeletePengambilanBarangBaku)
 
+	//History Routes
 	r.GET("/history/:id", middleware.PermissionMiddleware("history:read"), handler.GetPerintahKerjaDetailsByID)
 
+	//Formula Produksi Routes
 	r.GET("/formulaProduksi", middleware.PermissionMiddleware("formula:read"), handler.ListFormulaProduksi)
 	r.GET("/formulaProduksi/:id", middleware.PermissionMiddleware("formula:read"), handler.GetFormulaProduksiByID)
 	r.POST("/formulaProduksi", middleware.PermissionMiddleware("formula:create"), handler.AddFormulaProduksi)
 	r.PUT("/formulaProduksi/:id", middleware.PermissionMiddleware("formula:update"), handler.UpdateFormulaProduksi)
 	r.DELETE("/formulaProduksi/:id", middleware.PermissionMiddleware("formula:delete"), handler.DeleteFormulaProduksi)
+
+	//Barang Satuan Routes
+	r.GET("/barangSatuan", middleware.PermissionMiddleware("satuan:read"), handler.ListBarangSatuan)
+	r.GET("/barangSatuan/:id", middleware.PermissionMiddleware("satuan:read"), handler.GetBarangSatuanByID)
+	r.POST("/barangSatuan", middleware.PermissionMiddleware("satuan:create"), handler.AddBarangSatuan)
+	r.PUT("/barangSatuan/:id", middleware.PermissionMiddleware("satuan:update"), handler.UpdateBarangSatuan)
+	r.DELETE("/barangSatuan/:id", middleware.PermissionMiddleware("satuan:delete"), handler.DeleteBarangSatuan)
+
+	r.GET("/barangSatuanTurunan", middleware.PermissionMiddleware("satuan:read"), handler.ListSatuanTurunan)
+	r.GET("/barangSatuanTurunan/:id", middleware.PermissionMiddleware("satuan:read"), handler.GetSatuanTurunanByID)
+	r.POST("/barangSatuanTurunan", middleware.PermissionMiddleware("satuan:create"), handler.AddSatuanTurunan)
+	r.PUT("/barangSatuanTurunan/:id", middleware.PermissionMiddleware("satuan:update"), handler.UpdateSatuanTurunan)
+	r.DELETE("/barangSatuanTurunan/:id", middleware.PermissionMiddleware("satuan:delete"), handler.DeleteSatuanTurunan)
 
 	// Run server
 	port := os.Getenv("PORT")
