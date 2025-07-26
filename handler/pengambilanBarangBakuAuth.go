@@ -185,8 +185,9 @@ func UpdatePengambilanBarangBaku(c *gin.Context) {
 
 	var input struct {
 		BarangBaku []struct {
-			ID        int     `json:"idPengambilanBarangBaku"`
-			Kebutuhan float64 `json:"kebutuhan"`
+			ID             *int    `json:"idPengambilanBarangBaku"` // Nullable
+			IDBarangMentah int     `json:"idBarangMentah"`
+			Kebutuhan      float64 `json:"kebutuhan"`
 		} `json:"barangBaku"`
 	}
 
@@ -214,56 +215,71 @@ func UpdatePengambilanBarangBaku(c *gin.Context) {
 		}
 	}()
 
+	timestamp := time.Now()
+
 	for _, barang := range input.BarangBaku {
-		var oldKebutuhan float64
-		var idBarangMentah int
+		if barang.ID != nil {
+			// Update Scheme
+			var oldKebutuhan float64
+			queryFetch := `
+				SELECT kebutuhan
+				FROM "pengambilanBarangBaku"
+				WHERE id = $1 
+			`
+			err = tx.QueryRow(queryFetch, *barang.ID).Scan(&oldKebutuhan)
+			if err != nil {
+				fmt.Println(err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to fetch record for ID %d", *barang.ID)})
+				return
+			}
 
-		// 1. Fetch current record
-		queryGet := `
-			SELECT id_barang_mentah, kebutuhan
-			FROM "pengambilanBarangBaku"
-			WHERE id = $1 AND id_perintah_kerja = $2
-		`
-		err = tx.QueryRow(queryGet, barang.ID, idPerintahKerja).Scan(&idBarangMentah, &oldKebutuhan)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to fetch record for ID %d", barang.ID)})
-			return
-		}
+			// 1. Update kebutuhan + timestamp
+			queryUpdate := `
+				UPDATE "pengambilanBarangBaku"
+				SET kebutuhan = $1, id_barang_mentah = $2, tanggal_waktu = $3
+				WHERE id = $4
+			`
+			_, err = tx.Exec(queryUpdate, barang.Kebutuhan, barang.IDBarangMentah, timestamp, *barang.ID)
+			if err != nil {
+				fmt.Println(err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to update record for ID %d", *barang.ID)})
+				return
+			}
 
-		// 2. Update pengambilanBarangBaku
-		queryUpdate := `
-			UPDATE "pengambilanBarangBaku"
-			SET kebutuhan = $1, tanggal_waktu = $2
-			WHERE id = $3
-		`
-		_, err = tx.Exec(queryUpdate, barang.Kebutuhan, time.Now(), barang.ID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to update record for ID %d", barang.ID)})
-			return
-		}
+			// 2. Revert and subtract stok
+			queryRevertStok := `UPDATE "barangMentah" SET stok = stok + $1 WHERE id = $2`
+			_, err = tx.Exec(queryRevertStok, oldKebutuhan, barang.IDBarangMentah)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to revert stok for ID %d", *barang.ID)})
+				return
+			}
 
-		// 3. Revert old kebutuhan from stok
-		queryRevertStok := `
-			UPDATE "barangMentah"
-			SET stok = stok + $1
-			WHERE id = $2
-		`
-		_, err = tx.Exec(queryRevertStok, oldKebutuhan, idBarangMentah)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to revert stok for ID %d", barang.ID)})
-			return
-		}
+			querySubtractStok := `UPDATE "barangMentah" SET stok = stok - $1 WHERE id = $2`
+			_, err = tx.Exec(querySubtractStok, barang.Kebutuhan, barang.IDBarangMentah)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to update stok for ID %d", *barang.ID)})
+				return
+			}
 
-		// 4. Subtract new kebutuhan from stok
-		querySubtractStok := `
-			UPDATE "barangMentah"
-			SET stok = stok - $1
-			WHERE id = $2
-		`
-		_, err = tx.Exec(querySubtractStok, barang.Kebutuhan, idBarangMentah)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to update stok for ID %d", barang.ID)})
-			return
+		} else {
+			// Insert if there are no pengambilan barang baku ID
+			queryInsert := `
+				INSERT INTO "pengambilanBarangBaku" (id_perintah_kerja, id_barang_mentah, kebutuhan, tanggal_waktu)
+				VALUES ($1, $2, $3, $4)
+			`
+			_, err = tx.Exec(queryInsert, idPerintahKerja, barang.IDBarangMentah, barang.Kebutuhan, timestamp)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to insert new pengambilan for barang %d", barang.IDBarangMentah)})
+				return
+			}
+
+			// Subtract stok
+			querySubtractStok := `UPDATE "barangMentah" SET stok = stok - $1 WHERE id = $2`
+			_, err = tx.Exec(querySubtractStok, barang.Kebutuhan, barang.IDBarangMentah)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to subtract stok for new barang %d", barang.IDBarangMentah)})
+				return
+			}
 		}
 	}
 

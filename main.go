@@ -20,9 +20,6 @@ func main() {
 	// Public routes (no authentication)
 	r.POST("/login", handler.Login)
 
-	r.PUT("/test/pengambilanBarangBaku/:idPerintahKerja", handler.UpdatePengambilanBarangBaku)
-	r.GET("/test/pengambilanBarangBaku", handler.GetPengambilanBarangBaku)
-
 	// User Management Routes
 	r.POST("/register", middleware.PermissionMiddleware("users:create"), handler.Register)
 	r.GET("/users", middleware.PermissionMiddleware("users:read"), handler.AllUserList)
