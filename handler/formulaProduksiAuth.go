@@ -15,7 +15,7 @@ import (
 
 func ListFormulaProduksi(c *gin.Context) {
 	query := `
-		SELECT id, id_barang_produksi, kuantitas, tanggal_mulai, nama_produksi
+		SELECT id, id_barang_produksi, kuantitas, tanggal_mulai, nama_produksi, nama
 		FROM "formulaProduksi"
 	`
 
@@ -30,8 +30,9 @@ func ListFormulaProduksi(c *gin.Context) {
 	for rows.Next() {
 		var item model.FormulaProduksi
 		var tanggalMulai time.Time
-		err := rows.Scan(&item.ID, &item.IDBarangProduksi, &item.Kuantitas, &tanggalMulai, &item.NamaProduksi)
+		err := rows.Scan(&item.ID, &item.IDBarangProduksi, &item.Kuantitas, &tanggalMulai, &item.NamaProduksi, &item.NamaFormula)
 		if err != nil {
+			fmt.Println(err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse formula produksi"})
 			return
 		}
@@ -54,13 +55,13 @@ func GetFormulaProduksiByID(c *gin.Context) {
 	}
 
 	query := `
-		SELECT id, id_barang_produksi, kuantitas, tanggal_mulai, nama_produksi
+		SELECT id, id_barang_produksi, kuantitas, tanggal_mulai, nama_produksi, nama
 		FROM "formulaProduksi"
 		WHERE id = $1
 	`
 	var item model.FormulaProduksi
 	var tanggalMulai time.Time
-	err = db.GetDB().QueryRow(query, id).Scan(&item.ID, &item.IDBarangProduksi, &item.Kuantitas, &tanggalMulai, &item.NamaProduksi)
+	err = db.GetDB().QueryRow(query, id).Scan(&item.ID, &item.IDBarangProduksi, &item.Kuantitas, &tanggalMulai, &item.NamaProduksi, &item.NamaFormula)
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Formula Produksi not found"})
 		return
@@ -76,13 +77,14 @@ func GetFormulaProduksiByID(c *gin.Context) {
 func AddFormulaProduksi(c *gin.Context) {
 	var inputs []model.FormulaProduksi
 	if err := c.ShouldBindJSON(&inputs); err != nil {
+		fmt.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
 		return
 	}
 
 	query := `
-		INSERT INTO "formulaProduksi" (id_barang_produksi, kuantitas, tanggal_mulai, nama_produksi)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO "formulaProduksi" (id_barang_produksi, kuantitas, tanggal_mulai, nama_produksi, nama)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id
 	`
 
@@ -95,7 +97,7 @@ func AddFormulaProduksi(c *gin.Context) {
 	var added []model.FormulaProduksi
 	for i, input := range inputs {
 		var id int
-		err := tx.QueryRow(query, input.IDBarangProduksi, input.Kuantitas, input.TanggalMulai, input.NamaProduksi).Scan(&id)
+		err := tx.QueryRow(query, input.IDBarangProduksi, input.Kuantitas, input.TanggalMulai, input.NamaProduksi, &input.NamaFormula).Scan(&id)
 		if err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed at item %d: %v", i+1, err)})
@@ -140,6 +142,7 @@ func UpdateFormulaProduksi(c *gin.Context) {
 		"kuantitas":        true,
 		"tanggalMulai":     true,
 		"namaProduksi":     true,
+		"namaFormula":      true,
 	}
 
 	setClauses := []string{}
@@ -157,6 +160,7 @@ func UpdateFormulaProduksi(c *gin.Context) {
 			"kuantitas":        "kuantitas",
 			"tanggalMulai":     "tanggal_mulai",
 			"namaProduksi":     "nama_produksi",
+			"namaFormula":      "nama",
 		}[key]
 
 		setClauses = append(setClauses, fmt.Sprintf("%s = $%d", column, argIdx))

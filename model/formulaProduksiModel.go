@@ -8,4 +8,5 @@ type FormulaProduksi struct {
 	Kuantitas        float64   `json:"kuantitas"`
 	TanggalMulai     time.Time `json:"tanggalMulai"`
 	NamaProduksi     string    `json:"namaProduksi"`
+	NamaFormula      string    `json:"namaFormula"`
 }
