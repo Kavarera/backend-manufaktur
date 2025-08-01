@@ -64,16 +64,17 @@ func ListBarangProduksi(c *gin.Context) {
 				HargaReal:       hargaReal,
 				SatuanUtamaID:   satuanUtamaID,
 				SatuanUtamaNama: satuanUtamaNama,
-				Stok:            stok,
+				Stok:            0, // accumulate
 				GudangID:        gudangID,
 				GudangNama:      gudangNama,
 			}
 		}
 
+		grouped[kodeBarang].Stok += stok
 		grouped[kodeBarang].SatuanTurunan = append(grouped[kodeBarang].SatuanTurunan, model.BarangSatuanTurunan{
 			SatuanTurunanID:   satuanID,
 			SatuanTurunanNama: satuanNama,
-			Jumlah:            stok, // stok is jumlah for that satuanTurunan
+			Jumlah:            stok,
 		})
 	}
 
@@ -166,11 +167,6 @@ func AddBarangProduksi(c *gin.Context) {
 		return
 	}
 
-	if len(bp.SatuanTurunan) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "Error", "message": "At least one satuanTurunan is required"})
-		return
-	}
-
 	tx, err := db.GetDB().Begin()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to start transaction"})
@@ -178,16 +174,49 @@ func AddBarangProduksi(c *gin.Context) {
 	}
 	defer tx.Rollback()
 
-	insertQuery := `
-		INSERT INTO "barangProduksi" 
-		(nama, kode_barang, harga_standar, harga_real, satuan_utama, satuan, stok, gudang)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		RETURNING id
-	`
-
 	var insertedIDs []int
 
-	for _, st := range bp.SatuanTurunan {
+	// If satuanTurunan is provided
+	if len(bp.SatuanTurunan) > 0 {
+		for _, st := range bp.SatuanTurunan {
+			insertQuery := `
+			INSERT INTO "barangProduksi" 
+			(nama, kode_barang, harga_standar, harga_real, satuan_utama, satuan, stok, gudang)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+			RETURNING id
+		`
+			var insertedID int
+			err := tx.QueryRow(insertQuery,
+				bp.Nama,
+				bp.KodeBarang,
+				bp.HargaStandar,
+				bp.HargaReal,
+				bp.SatuanUtamaID,
+				st.SatuanTurunanID,
+				st.Jumlah,
+				bp.GudangID,
+			).Scan(&insertedID)
+
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Insert failed: " + err.Error()})
+				return
+			}
+			insertedIDs = append(insertedIDs, insertedID)
+		}
+	} else {
+		// Use root-level satuanUtama as default, and stok as quantity
+		if bp.SatuanUtamaID == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"status": "Error", "message": "satuanUtamaId is required when satuanTurunan is not provided"})
+			return
+		}
+
+		insertQuery := `
+		INSERT INTO "barangProduksi" 
+		(nama, kode_barang, harga_standar, harga_real, satuan_utama, stok, gudang)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id
+		`
+
 		var insertedID int
 		err := tx.QueryRow(insertQuery,
 			bp.Nama,
@@ -195,8 +224,7 @@ func AddBarangProduksi(c *gin.Context) {
 			bp.HargaStandar,
 			bp.HargaReal,
 			bp.SatuanUtamaID,
-			st.SatuanTurunanID,
-			st.Jumlah,
+			bp.Stok,
 			bp.GudangID,
 		).Scan(&insertedID)
 
@@ -204,7 +232,6 @@ func AddBarangProduksi(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Insert failed: " + err.Error()})
 			return
 		}
-
 		insertedIDs = append(insertedIDs, insertedID)
 	}
 
@@ -213,7 +240,6 @@ func AddBarangProduksi(c *gin.Context) {
 		return
 	}
 
-	// Respond with the same input plus a representative ID
 	bp.ID = insertedIDs[0]
 
 	c.JSON(http.StatusCreated, gin.H{
