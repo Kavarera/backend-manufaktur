@@ -16,7 +16,7 @@ func ListBarangProduksi(c *gin.Context) {
 		bp.satuan_utama, bs.nama, bp.stok, bp.gudang, g.nama,
 		st.id, st.nama
 	FROM "barangProduksi" bp
-	JOIN "satuanTurunan" st ON bp.satuan = st.id
+	LEFT JOIN "satuanTurunan" st ON bp.satuan = st.id
 	JOIN "gudang" g ON bp.gudang = g.id
 	LEFT JOIN "barangSatuan" bs ON bp.satuan_utama = bs.id
 	ORDER BY bp.kode_barang, bp.id
@@ -43,8 +43,8 @@ func ListBarangProduksi(c *gin.Context) {
 			stok            float64
 			gudangID        int
 			gudangNama      string
-			satuanID        int
-			satuanNama      string
+			satuanID        *int
+			satuanNama      *string
 		)
 
 		err := rows.Scan(&id, &nama, &kodeBarang, &hargaStandar, &hargaReal,
@@ -64,18 +64,22 @@ func ListBarangProduksi(c *gin.Context) {
 				HargaReal:       hargaReal,
 				SatuanUtamaID:   satuanUtamaID,
 				SatuanUtamaNama: satuanUtamaNama,
-				Stok:            0, // accumulate
+				Stok:            0,
 				GudangID:        gudangID,
 				GudangNama:      gudangNama,
 			}
 		}
 
 		grouped[kodeBarang].Stok += stok
-		grouped[kodeBarang].SatuanTurunan = append(grouped[kodeBarang].SatuanTurunan, model.BarangSatuanTurunan{
-			SatuanTurunanID:   satuanID,
-			SatuanTurunanNama: satuanNama,
-			Jumlah:            stok,
-		})
+
+		// Only append SatuanTurunan if it exists
+		if satuanID != nil && satuanNama != nil {
+			grouped[kodeBarang].SatuanTurunan = append(grouped[kodeBarang].SatuanTurunan, model.BarangSatuanTurunan{
+				SatuanTurunanID:   *satuanID,
+				SatuanTurunanNama: *satuanNama,
+				Jumlah:            stok,
+			})
+		}
 	}
 
 	var result []model.BarangProduksi
@@ -111,7 +115,7 @@ func GetBarangProduksiByID(c *gin.Context) {
 		bp.satuan_utama, bs.nama, bp.stok, bp.gudang, g.nama,
 		st.id, st.nama
 	FROM "barangProduksi" bp
-	JOIN "satuanTurunan" st ON bp.satuan = st.id
+	LEFT JOIN "satuanTurunan" st ON bp.satuan = st.id
 	JOIN "gudang" g ON bp.gudang = g.id
 	LEFT JOIN "barangSatuan" bs ON bp.satuan_utama = bs.id
 	WHERE bp.kode_barang = $1
@@ -130,24 +134,45 @@ func GetBarangProduksiByID(c *gin.Context) {
 	for rows.Next() {
 		var (
 			id              int
+			nama            string
+			kodeBarang      string
+			hargaStandar    float64
+			hargaReal       float64
 			satuanUtamaID   *int
 			satuanUtamaNama *string
-			st              model.BarangSatuanTurunan
+			stok            float64
+			gudangID        int
+			gudangNama      string
+			satuanID        *int
+			satuanNama      *string
 		)
 
-		err := rows.Scan(&id, &result.Nama, &result.KodeBarang, &result.HargaStandar, &result.HargaReal,
-			&satuanUtamaID, &satuanUtamaNama, &st.Jumlah, &result.GudangID, &result.GudangNama,
-			&st.SatuanTurunanID, &st.SatuanTurunanNama)
+		err := rows.Scan(&id, &nama, &kodeBarang, &hargaStandar, &hargaReal,
+			&satuanUtamaID, &satuanUtamaNama, &stok, &gudangID, &gudangNama,
+			&satuanID, &satuanNama)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Scan failed"})
 			return
 		}
 
 		result.ID = id
+		result.Nama = nama
+		result.KodeBarang = kodeBarang
+		result.HargaStandar = hargaStandar
+		result.HargaReal = hargaReal
 		result.SatuanUtamaID = satuanUtamaID
 		result.SatuanUtamaNama = satuanUtamaNama
+		result.GudangID = gudangID
+		result.GudangNama = gudangNama
+		result.Stok += stok
 
-		satuanTurunans = append(satuanTurunans, st)
+		if satuanID != nil && satuanNama != nil {
+			satuanTurunans = append(satuanTurunans, model.BarangSatuanTurunan{
+				SatuanTurunanID:   *satuanID,
+				SatuanTurunanNama: *satuanNama,
+				Jumlah:            stok,
+			})
+		}
 	}
 
 	result.SatuanTurunan = satuanTurunans
@@ -263,31 +288,92 @@ func UpdateBarangProduksi(c *gin.Context) {
 		return
 	}
 
-	// Validate that satuanTurunan is not empty
-	if len(bp.SatuanTurunan) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "Error", "message": "At least one satuanTurunan is required"})
-		return
-	}
+	dbx := db.GetDB()
 
-	satuanID := bp.SatuanTurunan[0].SatuanTurunanID
-
-	query := `
-		UPDATE "barangProduksi"
-		SET "nama"=$1, "kode_barang"=$2, "harga_standar"=$3, "harga_real"=$4, 
-			"satuan"=$5, "stok"=$6, "gudang"=$7, "satuan_utama"=$8
-		WHERE "id"=$9
-	`
-
-	res, err := db.GetDB().Exec(query, bp.Nama, bp.KodeBarang, bp.HargaStandar, bp.HargaReal,
-		satuanID, bp.Stok, bp.GudangID, bp.SatuanUtamaID, id)
+	// Lookup the kode_barang for group update
+	var kodeBarang string
+	err = dbx.QueryRow(`SELECT kode_barang FROM "barangProduksi" WHERE id = $1`, id).Scan(&kodeBarang)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to update barang produksi: " + err.Error()})
+		c.JSON(http.StatusNotFound, gin.H{"status": "Error", "message": "Barang produksi not found"})
 		return
 	}
 
-	rowsAffected, _ := res.RowsAffected()
-	if rowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"status": "Error", "message": "Barang produksi not found"})
+	tx, err := dbx.Begin()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to begin transaction"})
+		return
+	}
+	defer tx.Rollback()
+
+	// Delete existing rows for the same kode_barang
+	_, err = tx.Exec(`DELETE FROM "barangProduksi" WHERE kode_barang = $1`, kodeBarang)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to delete existing entries"})
+		return
+	}
+
+	var insertedIDs []int
+
+	if len(bp.SatuanTurunan) > 0 {
+		for _, st := range bp.SatuanTurunan {
+			insertQuery := `
+			INSERT INTO "barangProduksi" 
+			(nama, kode_barang, harga_standar, harga_real, satuan_utama, satuan, stok, gudang)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+			RETURNING id
+			`
+			var insertedID int
+			err := tx.QueryRow(insertQuery,
+				bp.Nama,
+				bp.KodeBarang,
+				bp.HargaStandar,
+				bp.HargaReal,
+				bp.SatuanUtamaID,
+				st.SatuanTurunanID,
+				st.Jumlah,
+				bp.GudangID,
+			).Scan(&insertedID)
+
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Insert failed: " + err.Error()})
+				return
+			}
+			insertedIDs = append(insertedIDs, insertedID)
+		}
+	} else {
+		if bp.SatuanUtamaID == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"status": "Error", "message": "satuanUtamaId is required when satuanTurunan is not provided"})
+			return
+		}
+
+		insertQuery := `
+		INSERT INTO "barangProduksi" 
+		(nama, kode_barang, harga_standar, harga_real, satuan_utama, satuan, stok, gudang)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id
+		`
+
+		var insertedID int
+		err := tx.QueryRow(insertQuery,
+			bp.Nama,
+			bp.KodeBarang,
+			bp.HargaStandar,
+			bp.HargaReal,
+			bp.SatuanUtamaID,
+			*bp.SatuanUtamaID,
+			bp.Stok,
+			bp.GudangID,
+		).Scan(&insertedID)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Insert failed: " + err.Error()})
+			return
+		}
+		insertedIDs = append(insertedIDs, insertedID)
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to commit transaction"})
 		return
 	}
 
