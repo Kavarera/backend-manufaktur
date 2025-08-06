@@ -138,7 +138,7 @@ func GetPengambilanBarangBaku(c *gin.Context) {
 			&record.StokBarangMentah,
 		)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse result"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse result" + err.Error()})
 			return
 		}
 

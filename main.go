@@ -52,6 +52,7 @@ func main() {
 	r.POST("/barangMentah", middleware.PermissionMiddleware("mentah:create"), handler.AddMentah)
 	r.PUT("/barangMentah/:id", middleware.PermissionMiddleware("mentah:update"), handler.UpdateMentah)
 	r.DELETE("/barangMentah/:id", middleware.PermissionMiddleware("mentah:delete"), handler.DeleteMentah)
+	r.DELETE("/barangMentah/clearTurunan/:id", middleware.PermissionMiddleware("mentah:delete"), handler.DeleteTurunanMentah)
 
 	// Rencana Produksi Routes
 	r.GET("/rencanaProduksi", middleware.PermissionMiddleware("rencana:read"), handler.ListRencanaProduksi)
