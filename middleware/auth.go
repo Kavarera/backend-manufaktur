@@ -69,6 +69,8 @@ const (
 
 	// History Permissions
 	PermHistoryRead = "history:read"
+
+	//Super Admin Permissions
 	PermUsersCreate = "users:create"
 	PermUsersRead   = "users:read"
 	PermUsersUpdate = "users:update"
@@ -134,22 +136,23 @@ func checkUserPermission(userRoles int, requiredPermission string) bool {
 			PermGudangCreate, PermGudangRead, PermGudangUpdate, PermGudangDelete,
 			PermMentahCreate, PermMentahRead, PermMentahUpdate, PermMentahDelete,
 			PermFormulaCreate, PermFormulaRead, PermFormulaUpdate, PermFormulaDelete,
-			PermSatuanCreate, PermSatuanRead, PermSatuanUpdate, PermSatuanDelete,
+			PermSatuanCreate, PermSatuanRead, PermSatuanUpdate, PermSatuanDelete, PermHistoryRead,
 		},
 		RoleRencanaProduksi: {
 			PermRencanaCreate, PermRencanaRead, PermRencanaUpdate, PermRencanaDelete, PermJadwalRead,
+			PermFormulaCreate, PermFormulaRead, PermFormulaUpdate, PermFormulaDelete, PermHistoryRead,
 		},
 		RolePerintahKerja: {
-			PermPerintahCreate, PermPerintahRead, PermPerintahUpdate, PermHistoryRead,
+			PermPerintahCreate, PermPerintahRead, PermPerintahUpdate, PermHistoryRead, PermRencanaRead,
 		},
 		RoleHapusPerintahKerja: {
-			PermPerintahDelete,
+			PermPerintahDelete, PermHistoryRead, PermRencanaRead,
 		},
 		RolePengambilanBarangBaku: {
-			PermPengambilanCreate, PermPengambilanRead, PermPengambilanUpdate, PermPengambilanDelete,
+			PermPengambilanCreate, PermPengambilanRead, PermPengambilanUpdate, PermPengambilanDelete, PermHistoryRead,
 		},
 		RolePengambilanBarangJadi: {
-			PermSelesaiCreate, PermSelesaiRead, PermSelesaiUpdate, PermSelesaiDelete,
+			PermSelesaiCreate, PermSelesaiRead, PermSelesaiUpdate, PermSelesaiDelete, PermHistoryRead, PermPerintahRead,
 		},
 	}
 
