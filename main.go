@@ -39,6 +39,7 @@ func main() {
 	r.POST("/barangProduksi", middleware.PermissionMiddleware("barang:create"), handler.AddBarangProduksi)
 	r.PUT("/barangProduksi/:id", middleware.PermissionMiddleware("barang:update"), handler.UpdateBarangProduksi)
 	r.DELETE("/barangProduksi/:id", middleware.PermissionMiddleware("barang:delete"), handler.DeleteBarangProduksi)
+	r.DELETE("/barangProduksi/clearTurunan/:id", middleware.PermissionMiddleware("barang:delete"), handler.DeleteTurunanProduksi)
 
 	// Gudang Routes
 	r.GET("/gudang", middleware.PermissionMiddleware("gudang:read"), handler.ListGudang)
@@ -78,6 +79,7 @@ func main() {
 	r.DELETE("/pengambilanBarangBaku/:id", middleware.PermissionMiddleware("pengambilan:delete"), handler.DeletePengambilanBarangBaku)
 
 	//History Routes
+	r.GET("/history", middleware.PermissionMiddleware("history:read"), handler.GetPerintahKerjaDetails)
 	r.GET("/history/:id", middleware.PermissionMiddleware("history:read"), handler.GetPerintahKerjaDetailsByID)
 
 	//Formula Produksi Routes
