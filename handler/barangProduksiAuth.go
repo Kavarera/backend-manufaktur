@@ -409,3 +409,35 @@ func DeleteBarangProduksi(c *gin.Context) {
 		"message": "Barang produksi deleted successfully",
 	})
 }
+
+func DeleteTurunanProduksi(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "Error", "message": "Invalid ID"})
+		return
+	}
+
+	query := `
+		UPDATE "barangProduksi"
+		SET "satuan" = NULL
+		WHERE "id" = $1
+	`
+
+	res, err := db.GetDB().Exec(query, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "Error", "message": "Failed to clear satuan fields: " + err.Error()})
+		return
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"status": "Error", "message": "Barang not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "OK",
+		"message": "Satuan Turunan fields cleared successfully",
+	})
+}
