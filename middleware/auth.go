@@ -141,15 +141,17 @@ func checkUserPermission(userRoles int, requiredPermission string) bool {
 		RoleRencanaProduksi: {
 			PermRencanaCreate, PermRencanaRead, PermRencanaUpdate, PermRencanaDelete, PermJadwalRead,
 			PermFormulaCreate, PermFormulaRead, PermFormulaUpdate, PermFormulaDelete, PermHistoryRead,
+			PermBarangRead, PermFormulaRead,
 		},
 		RolePerintahKerja: {
 			PermPerintahCreate, PermPerintahRead, PermPerintahUpdate, PermHistoryRead, PermRencanaRead,
 		},
 		RoleHapusPerintahKerja: {
-			PermPerintahDelete, PermHistoryRead, PermRencanaRead,
+			PermPerintahDelete, PermHistoryRead, PermRencanaRead, PermPerintahRead,
 		},
 		RolePengambilanBarangBaku: {
-			PermPengambilanCreate, PermPengambilanRead, PermPengambilanUpdate, PermPengambilanDelete, PermHistoryRead,
+			PermPengambilanCreate, PermPengambilanRead, PermPengambilanUpdate, PermPengambilanDelete,
+			PermHistoryRead, PermMentahRead, PermPerintahRead,
 		},
 		RolePengambilanBarangJadi: {
 			PermSelesaiCreate, PermSelesaiRead, PermSelesaiUpdate, PermSelesaiDelete, PermHistoryRead, PermPerintahRead,
