@@ -39,45 +39,65 @@ func GetPerintahKerjaDetailsByID(c *gin.Context) {
 		bm.kode_barang AS barang_mentah_kode,
 		bm.harga_standar AS barang_mentah_harga_standar,
 		bm.stok AS barang_mentah_stok,
-		bm.jumlah_turunan AS jumlah_satuan_turunan
+		bm.gudang AS gudang_mentah,
+		bm.satuan AS satuan_turunan_id,
+		bm.satuan_utama AS satuan_utama_id,
+		bm.jumlah_turunan AS jumlah_satuan_turunan,
+		sa.nama AS nama_satuan,
+		st.id AS id_turunan,
+		st.nama AS nama_satuan_turunan,
+		gd.nama AS nama_gudang
 	FROM 
 		"perintahKerja" pk
 	LEFT JOIN "rencanaProduksi" rp ON rp.id = pk.id_rencana_produksi
 	LEFT JOIN "penyelesaianBarangJadi" pbd ON pbd.id_perintah_kerja = pk.id
 	LEFT JOIN "pengambilanBarangBaku" pbb ON pbb.id_perintah_kerja = pk.id
 	LEFT JOIN "barangMentah" bm ON bm.id = pbb.id_barang_mentah
+	LEFT JOIN "barangSatuan" sa ON sa.id = bm.satuan_utama
+	LEFT JOIN "satuanTurunan" st ON st.satuan = sa.id
+	LEFT JOIN "gudang" gd ON gd.id = bm.gudang
 	WHERE pk.id = $1
 	`
 
 	rows, err := db.GetDB().Query(query, id)
 	if err != nil {
+		fmt.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch perintah kerja details"})
 		return
 	}
 	defer rows.Close()
 
 	var (
-		details      model.PerintahKerjaDetails
-		penyelesaian []model.PenyelesaianBarangJadi
-		pengambilan  []model.PengambilanBarangBaku
-		barangMentah []model.BarangMentah
+		detailsMap = map[string]*model.PerintahKerjaDetails{}
+		result     []model.PerintahKerjaDetails
 	)
 
 	for rows.Next() {
-		var pk model.PerintahKerja
-		var pr model.RencanaProduksi
-		var pbb model.PengambilanBarangBaku
-		var bm model.BarangMentah
-		var jm model.BarangSatuanTurunanMentah
-
 		var (
-			tanggalProgres      sql.NullString
-			tanggalSelesai      sql.NullString
-			jumlahTurunan       sql.NullFloat64
-			penyelesaianID      sql.NullInt64
-			namaPenyelesaian    sql.NullString
-			jumlahPenyelesaian  sql.NullFloat64
-			tanggalPenyelesaian sql.NullTime
+			pk                      model.PerintahKerja
+			pr                      model.RencanaProduksi
+			pbb                     model.PengambilanBarangBaku
+			bm                      model.BarangMentah
+			tanggalProgres          sql.NullString
+			tanggalSelesai          sql.NullString
+			jumlahTurunan           sql.NullFloat64
+			penyelesaianID          sql.NullInt64
+			namaPenyelesaian        sql.NullString
+			jumlahPenyelesaian      sql.NullFloat64
+			tanggalPenyelesaian     sql.NullTime
+			pengambilanID           sql.NullInt64
+			pengambilanKebutuhan    sql.NullFloat64
+			mentahID                sql.NullInt64
+			mentahNama              sql.NullString
+			mentahKode              sql.NullString
+			mentahHarga             sql.NullFloat64
+			mentahStok              sql.NullFloat64
+			mentahGudang            sql.NullInt64
+			mentahTurunan           sql.NullInt64
+			mentahSatuan            sql.NullInt64
+			mentahNamaSatuan        sql.NullString
+			mentahNamaSatuanTurunan sql.NullString
+			mentahTurunanID         sql.NullInt64
 		)
 
 		err := rows.Scan(
@@ -85,35 +105,36 @@ func GetPerintahKerjaDetailsByID(c *gin.Context) {
 			&pk.Hasil, &pk.Customer, &pk.Keterangan, &pk.DocumentURL, &pk.DocumentNama, &pk.IdRencanaProduksi,
 			&pr.NamaProduksi,
 			&penyelesaianID, &namaPenyelesaian, &jumlahPenyelesaian, &tanggalPenyelesaian,
-			&pbb.ID, &pbb.Kebutuhan,
-			&bm.ID, &bm.Nama, &bm.KodeBarang, &bm.HargaStandar, &bm.Stok, &jumlahTurunan,
+			&pengambilanID, &pengambilanKebutuhan,
+			&mentahID, &mentahNama, &mentahKode, &mentahHarga, &mentahStok, &mentahGudang, &mentahTurunan, &mentahSatuan, &jumlahTurunan, &mentahNamaSatuan, &mentahTurunanID, &mentahNamaSatuanTurunan,
+			&bm.GudangNama,
 		)
 		if err != nil {
-			fmt.Println("Scan error:", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse data"})
 			return
 		}
-
-		pk.TanggalProgres = ""
-		pk.TanggalSelesai = ""
-		jm.JumlahTurunan = 0
-
-		// Convert nullable time fields
 		if tanggalProgres.Valid {
 			pk.TanggalProgres = tanggalProgres.String
 		}
 		if tanggalSelesai.Valid {
 			pk.TanggalSelesai = tanggalSelesai.String
 		}
-		if jumlahTurunan.Valid {
-			jm.JumlahTurunan = jumlahTurunan.Float64
+
+		// Group by PerintahKerja.ID
+		group, exists := detailsMap[pk.ID]
+		if !exists {
+			group = &model.PerintahKerjaDetails{
+				PerintahKerja:          pk,
+				PenyelesaianBarangJadi: []model.PenyelesaianBarangJadi{},
+				PengambilanBarangBaku:  []model.PengambilanBarangBaku{},
+				BarangMentah:           []model.BarangMentah{},
+			}
+			detailsMap[pk.ID] = group
 		}
 
-		// Fill the penyelesaian data
+		// Penyelesaian
 		if penyelesaianID.Valid {
-			pbd := model.PenyelesaianBarangJadi{
-				ID: int(penyelesaianID.Int64),
-			}
+			pbd := model.PenyelesaianBarangJadi{ID: int(penyelesaianID.Int64)}
 			if namaPenyelesaian.Valid {
 				pbd.Nama = namaPenyelesaian.String
 			}
@@ -124,27 +145,67 @@ func GetPerintahKerjaDetailsByID(c *gin.Context) {
 				date := model.CustomDate2(tanggalPenyelesaian.Time)
 				pbd.TanggalPenyelesaian = date
 			}
-			penyelesaian = append(penyelesaian, pbd)
+			group.PenyelesaianBarangJadi = append(group.PenyelesaianBarangJadi, pbd)
 		}
 
-		if pbb.ID != 0 {
-			pengambilan = append(pengambilan, pbb)
-		}
-		if bm.ID != 0 {
-			barangMentah = append(barangMentah, bm)
+		// Pengambilan
+		if pengambilanID.Valid {
+			pbb.ID = int(pengambilanID.Int64)
+			if pengambilanKebutuhan.Valid {
+				pbb.Kebutuhan = pengambilanKebutuhan.Float64
+			}
+			group.PengambilanBarangBaku = append(group.PengambilanBarangBaku, pbb)
 		}
 
-		details.PerintahKerja = pk
+		// Barang Mentah
+		if mentahID.Valid {
+			bm.ID = int(mentahID.Int64)
+			if mentahNama.Valid {
+				bm.Nama = mentahNama.String
+			}
+			if mentahKode.Valid {
+				bm.KodeBarang = mentahKode.String
+			}
+			if mentahHarga.Valid {
+				bm.HargaStandar = mentahHarga.Float64
+			}
+			if mentahStok.Valid {
+				bm.Stok = mentahStok.Float64
+			}
+			if mentahGudang.Valid {
+				bm.GudangID = int(mentahGudang.Int64)
+			}
+			if mentahTurunan.Valid {
+				val := int(mentahTurunan.Int64)
+				bm.SatuanID = &val
+			}
+			if mentahSatuan.Valid {
+				val := int(mentahSatuan.Int64)
+				bm.SatuanUtamaID = &val
+			}
+			if mentahNamaSatuan.Valid {
+				bm.SatuanUtamaNama = &mentahNamaSatuan.String
+			}
+			if jumlahTurunan.Valid {
+				bm.SatuanTurunan = []model.BarangSatuanTurunanMentah{
+					{SatuanID: int(mentahTurunanID.Int64),
+						JumlahTurunan: jumlahTurunan.Float64,
+						SatuanNama:    mentahNamaSatuanTurunan.String},
+				}
+			}
+			group.BarangMentah = append(group.BarangMentah, bm)
+		}
 	}
 
-	details.PenyelesaianBarangJadi = penyelesaian
-	details.PengambilanBarangBaku = pengambilan
-	details.BarangMentah = barangMentah
+	// Collect results
+	for _, v := range detailsMap {
+		result = append(result, *v)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "OK",
 		"message": "Berhasil",
-		"data":    details,
+		"data":    result,
 	})
 }
 
@@ -174,17 +235,28 @@ func GetPerintahKerjaDetails(c *gin.Context) {
 		bm.kode_barang AS barang_mentah_kode,
 		bm.harga_standar AS barang_mentah_harga_standar,
 		bm.stok AS barang_mentah_stok,
-		bm.jumlah_turunan AS jumlah_satuan_turunan
+		bm.gudang AS gudang_mentah,
+		bm.satuan AS satuan_turunan_id,
+		bm.satuan_utama AS satuan_utama_id,
+		bm.jumlah_turunan AS jumlah_satuan_turunan,
+		sa.nama AS nama_satuan,
+		st.id AS id_turunan,
+		st.nama AS nama_satuan_turunan,
+		gd.nama AS nama_gudang
 	FROM 
 		"perintahKerja" pk
 	LEFT JOIN "rencanaProduksi" rp ON rp.id = pk.id_rencana_produksi
 	LEFT JOIN "penyelesaianBarangJadi" pbd ON pbd.id_perintah_kerja = pk.id
 	LEFT JOIN "pengambilanBarangBaku" pbb ON pbb.id_perintah_kerja = pk.id
 	LEFT JOIN "barangMentah" bm ON bm.id = pbb.id_barang_mentah
+	LEFT JOIN "barangSatuan" sa ON sa.id = bm.satuan_utama
+	LEFT JOIN "satuanTurunan" st ON st.satuan = sa.id
+	LEFT JOIN "gudang" gd ON gd.id = bm.gudang
 	`
 
 	rows, err := db.GetDB().Query(query)
 	if err != nil {
+		fmt.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch perintah kerja details"})
 		return
 	}
@@ -197,24 +269,30 @@ func GetPerintahKerjaDetails(c *gin.Context) {
 
 	for rows.Next() {
 		var (
-			pk                   model.PerintahKerja
-			pr                   model.RencanaProduksi
-			pbb                  model.PengambilanBarangBaku
-			bm                   model.BarangMentah
-			tanggalProgres       sql.NullString
-			tanggalSelesai       sql.NullString
-			jumlahTurunan        sql.NullFloat64
-			penyelesaianID       sql.NullInt64
-			namaPenyelesaian     sql.NullString
-			jumlahPenyelesaian   sql.NullFloat64
-			tanggalPenyelesaian  sql.NullTime
-			pengambilanID        sql.NullInt64
-			pengambilanKebutuhan sql.NullFloat64
-			mentahID             sql.NullInt64
-			mentahNama           sql.NullString
-			mentahKode           sql.NullString
-			mentahHarga          sql.NullFloat64
-			mentahStok           sql.NullFloat64
+			pk                      model.PerintahKerja
+			pr                      model.RencanaProduksi
+			pbb                     model.PengambilanBarangBaku
+			bm                      model.BarangMentah
+			tanggalProgres          sql.NullString
+			tanggalSelesai          sql.NullString
+			jumlahTurunan           sql.NullFloat64
+			penyelesaianID          sql.NullInt64
+			namaPenyelesaian        sql.NullString
+			jumlahPenyelesaian      sql.NullFloat64
+			tanggalPenyelesaian     sql.NullTime
+			pengambilanID           sql.NullInt64
+			pengambilanKebutuhan    sql.NullFloat64
+			mentahID                sql.NullInt64
+			mentahNama              sql.NullString
+			mentahKode              sql.NullString
+			mentahHarga             sql.NullFloat64
+			mentahStok              sql.NullFloat64
+			mentahGudang            sql.NullInt64
+			mentahTurunan           sql.NullInt64
+			mentahSatuan            sql.NullInt64
+			mentahNamaSatuan        sql.NullString
+			mentahNamaSatuanTurunan sql.NullString
+			mentahTurunanID         sql.NullInt64
 		)
 
 		err := rows.Scan(
@@ -223,7 +301,8 @@ func GetPerintahKerjaDetails(c *gin.Context) {
 			&pr.NamaProduksi,
 			&penyelesaianID, &namaPenyelesaian, &jumlahPenyelesaian, &tanggalPenyelesaian,
 			&pengambilanID, &pengambilanKebutuhan,
-			&mentahID, &mentahNama, &mentahKode, &mentahHarga, &mentahStok, &jumlahTurunan,
+			&mentahID, &mentahNama, &mentahKode, &mentahHarga, &mentahStok, &mentahGudang, &mentahTurunan, &mentahSatuan, &jumlahTurunan, &mentahNamaSatuan, &mentahTurunanID, &mentahNamaSatuanTurunan,
+			&bm.GudangNama,
 		)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse data"})
@@ -289,9 +368,25 @@ func GetPerintahKerjaDetails(c *gin.Context) {
 			if mentahStok.Valid {
 				bm.Stok = mentahStok.Float64
 			}
+			if mentahGudang.Valid {
+				bm.GudangID = int(mentahGudang.Int64)
+			}
+			if mentahTurunan.Valid {
+				val := int(mentahTurunan.Int64)
+				bm.SatuanID = &val
+			}
+			if mentahSatuan.Valid {
+				val := int(mentahSatuan.Int64)
+				bm.SatuanUtamaID = &val
+			}
+			if mentahNamaSatuan.Valid {
+				bm.SatuanUtamaNama = &mentahNamaSatuan.String
+			}
 			if jumlahTurunan.Valid {
 				bm.SatuanTurunan = []model.BarangSatuanTurunanMentah{
-					{JumlahTurunan: jumlahTurunan.Float64},
+					{SatuanID: int(mentahTurunanID.Int64),
+						JumlahTurunan: jumlahTurunan.Float64,
+						SatuanNama:    mentahNamaSatuanTurunan.String},
 				}
 			}
 			group.BarangMentah = append(group.BarangMentah, bm)
